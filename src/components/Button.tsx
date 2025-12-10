@@ -2,8 +2,8 @@ import React from 'react';
 import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const TEAL_GREEN = '#26A69A';
-const BRIGHT_GREEN = '#66BB6A';
+const TEAL_GREEN = '#14AB98';
+const BRIGHT_GREEN = '#B0E56D';
 
 interface ButtonProps {
   variant?: 'gradient' | 'default';
@@ -66,14 +66,21 @@ const styles = StyleSheet.create({
   },
   button: {
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
+  
+    // Shadow for iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+  
+    // Shadow for Android
     elevation: 4,
+    // borderColor: '#000000',
+    // borderBottomWidth: 1.4,
   },
+  
   buttonDisabled: {
     opacity: 0.5,
   },

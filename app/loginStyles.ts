@@ -139,6 +139,7 @@ export const loginStyles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E0E0E0',
     maxWidth: 400,
+    marginTop: 24
   },
 });
 

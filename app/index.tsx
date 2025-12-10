@@ -20,22 +20,32 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loginType, setLoginType] = useState<LoginType>('admin');
 
   const handleLogin = () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
+    if (loginType === 'admin') {
+      if (!email || !password) {
+        Alert.alert('Error', 'Please fill in all fields');
+        return;
+      }
+      // TODO: Implement actual authentication logic
+      console.log('Login attempt:', { email, password, loginType });
+      Alert.alert('Success', 'Login successful!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/'),
+        },
+      ]);
+    } else {
+      if (!phoneNumber) {
+        Alert.alert('Error', 'Please enter your phone number');
+        return;
+      }
+      // TODO: Implement OTP sending logic
+      console.log('Send code to:', { phoneNumber, loginType });
+      Alert.alert('Code Sent', 'Verification code has been sent to your phone number');
     }
-
-    // TODO: Implement actual authentication logic
-    console.log('Login attempt:', { email, password, loginType });
-    Alert.alert('Success', 'Login successful!', [
-      {
-        text: 'OK',
-        onPress: () => router.push('/'),
-      },
-    ]);
   };
 
   return (
@@ -106,43 +116,60 @@ export default function LoginScreen() {
 
           {/* Input Fields */}
           <View style={styles.inputContainer}>
-            <Input
-              variant="text"
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <Input
-              variant="text"
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              style={styles.input}
-              secureTextEntry
-              showForgotPassword
-              onForgotPasswordPress={() => Alert.alert('Forgot Password', 'Feature coming soon')}
-            />
+            {loginType === 'admin' ? (
+              <>
+                <Input
+                  variant="text"
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  style={styles.input}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <Input
+                  variant="text"
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  style={styles.input}
+                  secureTextEntry
+                  showForgotPassword
+                  onForgotPasswordPress={() => Alert.alert('Forgot Password', 'Feature coming soon')}
+                />
+              </>
+            ) : (
+              <Input
+                variant="text"
+                label="Phone Number"
+                placeholder="Phone Number"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                style={styles.input}
+                keyboardType="phone-pad"
+              />
+            )}
           </View>
 
-          {/* Login Button with Gradient */}
+          {/* Login/Send Code Button with Gradient */}
           <Button
             variant="gradient"
-            title="Login"
+            title={loginType === 'admin' ? 'Login' : 'Send Code'}
             onPress={handleLogin}
           />
 
-          {/* Sign Up Link */}
-          <View style={styles.signUpContainer}>
-            <Button
-              variant="default"
-              title="Sign Up"
-              onPress={() => Alert.alert('Sign Up', 'Feature coming soon')}
-            />
-            <View style={styles.divider} />
-          </View>
+          {/* Sign Up Link - Only show for admin */}
+          {loginType === 'admin' && (
+            <View style={styles.signUpContainer}>
+              <Button
+                variant="default"
+                title="Sign Up"
+                onPress={() => Alert.alert('Sign Up', 'Feature coming soon')}
+              />
+             
+            </View>
+          )}
+           <View style={styles.divider} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
