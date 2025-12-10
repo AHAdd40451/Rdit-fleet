@@ -9,13 +9,13 @@ export default function RootLayout() {
         <Stack.Screen
           name="index"
           options={{
-            title: 'Home',
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="(auth)/login"
           options={{
-            title: 'Login',
+            headerShown: false,
           }}
         />
       </Stack>
