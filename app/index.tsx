@@ -11,12 +11,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { TextInput } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
 import { loginStyles as styles } from './loginStyles';
+import { Button } from '../src/components/Button';
 
 const PRIMARY_COLOR = '#06402B';
-const TEAL_GREEN = '#26A69A';
-const BRIGHT_GREEN = '#66BB6A';
 
 type LoginType = 'admin' | 'crew';
 
@@ -142,28 +140,19 @@ export default function LoginScreen() {
           </View>
 
           {/* Login Button with Gradient */}
-          <TouchableOpacity
-            style={styles.buttonContainer}
+          <Button
+            variant="gradient"
+            title="Login"
             onPress={handleLogin}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[TEAL_GREEN, BRIGHT_GREEN]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.button}
-            >
-              <Text style={styles.buttonText}>Login</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          />
 
           {/* Sign Up Link */}
           <View style={styles.signUpContainer}>
-            <TouchableOpacity
+            <Button
+              variant="default"
+              title="Sign Up"
               onPress={() => Alert.alert('Sign Up', 'Feature coming soon')}
-            >
-              <Text style={styles.signUpText}>Sign Up</Text>
-            </TouchableOpacity>
+            />
             <View style={styles.divider} />
           </View>
         </View>
