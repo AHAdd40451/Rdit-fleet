@@ -10,11 +10,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { TextInput } from 'react-native-paper';
 import { loginStyles as styles } from './loginStyles';
 import { Button } from '../src/components/Button';
-
-const PRIMARY_COLOR = '#06402B';
+import { Input } from '../src/components/Input';
 
 type LoginType = 'admin' | 'crew';
 
@@ -108,35 +106,25 @@ export default function LoginScreen() {
 
           {/* Input Fields */}
           <View style={styles.inputContainer}>
-            <TextInput
+            <Input
+              variant="text"
               label="Email"
               value={email}
               onChangeText={setEmail}
-              mode="outlined"
               style={styles.input}
               keyboardType="email-address"
               autoCapitalize="none"
-              outlineColor="#E0E0E0"
-              activeOutlineColor={PRIMARY_COLOR}
             />
-            <View style={styles.passwordContainer}>
-              <TextInput
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                mode="outlined"
-                style={[styles.input, styles.passwordInput]}
-                secureTextEntry
-                outlineColor="#E0E0E0"
-                activeOutlineColor={PRIMARY_COLOR}
-              />
-              <TouchableOpacity
-                style={styles.forgotPassword}
-                onPress={() => Alert.alert('Forgot Password', 'Feature coming soon')}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-            </View>
+            <Input
+              variant="text"
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              style={styles.input}
+              secureTextEntry
+              showForgotPassword
+              onForgotPasswordPress={() => Alert.alert('Forgot Password', 'Feature coming soon')}
+            />
           </View>
 
           {/* Login Button with Gradient */}
