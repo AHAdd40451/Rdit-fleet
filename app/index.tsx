@@ -34,7 +34,7 @@ export default function LoginScreen() {
       Alert.alert('Success', 'Login successful!', [
         {
           text: 'OK',
-          onPress: () => router.push('/'),
+          onPress: () => router.push('/home'),
         },
       ]);
     } else {
