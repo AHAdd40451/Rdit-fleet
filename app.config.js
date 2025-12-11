@@ -19,6 +19,7 @@ module.exports = {
       supportsTablet: true,
     },
     android: {
+      package: 'com.anonymous.reditfleet',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
@@ -30,6 +31,10 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: ['expo-router'],
+    updates: {
+      enabled: false,
+      fallbackToCacheTimeout: 0,
+    },
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://xejtgfdjfgrzauvztsod.supabase.co',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlanRnZmRqZmdyemF1dnp0c29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzOTY1MDMsImV4cCI6MjA4MDk3MjUwM30.CWBmGhPxHF0CC68M1TReTWJMu6tWYFqic1FaYT5jdAs',

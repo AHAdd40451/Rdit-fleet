@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Image,
   ScrollView,
 } from 'react-native';
@@ -13,38 +12,116 @@ import { useRouter } from 'expo-router';
 import { loginStyles as styles } from './loginStyles';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
+import { LoadingBar } from '../src/components/LoadingBar';
+import { useToast } from '../src/components/Toast';
+import { supabase } from '../lib/supabase';
 
 type LoginType = 'admin' | 'crew';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loginType, setLoginType] = useState<LoginType>('admin');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (loginType === 'admin') {
       if (!email || !password) {
-        Alert.alert('Error', 'Please fill in all fields');
+        showToast('Please fill in all fields', 'error');
         return;
       }
-      // TODO: Implement actual authentication logic
-      console.log('Login attempt:', { email, password, loginType });
-      Alert.alert('Success', 'Login successful!', [
-        {
-          text: 'OK',
-          onPress: () => router.push('/home'),
-        },
-      ]);
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // Sign in with Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data.user) {
+          throw new Error('Failed to sign in. Please try again.');
+        }
+
+        showToast('Login successful!', 'success', 2000);
+        
+        // Navigate to home after a short delay
+        setTimeout(() => {
+          router.push('/home');
+        }, 2000);
+      } catch (error: any) {
+        console.error('Login error:', error);
+        
+        // Provide user-friendly error messages
+        let errorMessage = 'An error occurred during login. Please try again.';
+        
+        if (error.message) {
+          if (error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Invalid email or password. Please check your credentials.';
+          } else if (error.message.includes('Email not confirmed')) {
+            errorMessage = 'Please verify your email before logging in.';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        showToast(errorMessage, 'error');
+      } finally {
+        setLoading(false);
+      }
     } else {
       if (!phoneNumber) {
-        Alert.alert('Error', 'Please enter your phone number');
+        showToast('Please enter your phone number', 'error');
         return;
       }
-      // TODO: Implement OTP sending logic
-      console.log('Send code to:', { phoneNumber, loginType });
-      Alert.alert('Code Sent', 'Verification code has been sent to your phone number');
+
+      // Validate phone number format (basic validation)
+      const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
+      if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+        showToast('Please enter a valid phone number', 'error');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // TODO: Implement OTP sending logic with Supabase Phone Auth
+        // For now, this is a placeholder that simulates OTP sending
+        // You'll need to configure Supabase Phone Auth and use:
+        // const { data, error } = await supabase.auth.signInWithOtp({
+        //   phone: phoneNumber,
+        // });
+        
+        console.log('Send code to:', { phoneNumber, loginType });
+        
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        showToast('Verification code has been sent to your phone number', 'success');
+      } catch (error: any) {
+        console.error('OTP sending error:', error);
+        showToast(
+          error.message || 'Failed to send verification code. Please try again.',
+          'error'
+        );
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -135,7 +212,7 @@ export default function LoginScreen() {
                   style={styles.input}
                   secureTextEntry
                   showForgotPassword
-                  onForgotPasswordPress={() => Alert.alert('Forgot Password', 'Feature coming soon')}
+                  onForgotPasswordPress={() => showToast('Forgot Password feature coming soon', 'info')}
                 />
               </>
             ) : (
@@ -154,17 +231,32 @@ export default function LoginScreen() {
           {/* Login/Send Code Button with Gradient */}
           <Button
             variant="gradient"
-            title={loginType === 'admin' ? 'Login' : 'Send Code'}
+            title={
+              loading
+                ? loginType === 'admin'
+                  ? 'Logging in...'
+                  : 'Sending Code...'
+                : loginType === 'admin'
+                ? 'Login'
+                : 'Send Code'
+            }
             onPress={handleLogin}
+            disabled={loading}
           />
+          {loading && (
+            <View style={{ marginTop: 16, width: '100%', maxWidth: 400 }}>
+              <LoadingBar variant="bar" />
+            </View>
+          )}
 
           {/* Sign Up Link - Only show for admin */}
           {loginType === 'admin' && (
             <View style={styles.signUpContainer}>
+              <Text style={styles.signUpText}>Don't have an account? </Text>
               <Button
                 variant="default"
                 title="Sign Up"
-                onPress={() => Alert.alert('Sign Up', 'Feature coming soon')}
+                onPress={() => router.push('/signup')}
               />
              
             </View>
