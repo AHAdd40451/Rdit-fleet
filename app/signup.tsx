@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -14,15 +14,28 @@ import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../src/contexts/AuthContext';
 
 export default function SignupScreen() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { session, userProfile } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session && userProfile) {
+      if (userProfile.role === 'admin') {
+        router.replace('/adminDashboard');
+      } else if (userProfile.role === 'user') {
+        router.replace('/userDashboard');
+      }
+    }
+  }, [session, userProfile]);
 
   const handleSignup = async () => {
     if (!firstName || !lastName || !email || !password) {
@@ -60,7 +73,7 @@ export default function SignupScreen() {
         throw new Error('Failed to create user account');
       }
 
-      // Insert user data into users table with role='admin'
+      // Insert user data into users table with role='user' (default role for new signups)
       // The 'id' field is auto-incrementing integer, so we don't include it
       // Note: Password is stored in Supabase Auth, but if your table requires it, we include it here
       // Ideally, the password field should be removed from the users table since auth handles passwords
@@ -69,7 +82,7 @@ export default function SignupScreen() {
         last_name: lastName.trim(),
         email: email.trim(),
         password: password, // Required by table, but password is primarily managed by Supabase Auth
-        role: 'admin',
+        role: 'user', // Default role for new signups
       };
 
       // Only include auth_user_id if the column exists in your table

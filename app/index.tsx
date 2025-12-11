@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -15,17 +15,30 @@ import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../src/contexts/AuthContext';
 
 type LoginType = 'admin' | 'crew';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { session, userProfile, refreshUserProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loginType, setLoginType] = useState<LoginType>('admin');
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session && userProfile) {
+      if (userProfile.role === 'admin') {
+        router.replace('/adminDashboard');
+      } else if (userProfile.role === 'user') {
+        router.replace('/userDashboard');
+      }
+    }
+  }, [session, userProfile]);
 
   const handleLogin = async () => {
     if (loginType === 'admin') {
@@ -58,11 +71,31 @@ export default function LoginScreen() {
           throw new Error('Failed to sign in. Please try again.');
         }
 
+        // Fetch user profile to get role
+        await refreshUserProfile();
+        
+        // Wait a moment for the profile to be fetched
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Get the updated profile from auth context
+        const { data: profileData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('email', email.trim())
+          .single();
+
         showToast('Login successful!', 'success', 2000);
         
-        // Navigate to home after a short delay
+        // Navigate to appropriate dashboard based on role
         setTimeout(() => {
-          router.push('/home');
+          if (profileData?.role === 'admin') {
+            router.replace('/adminDashboard');
+          } else if (profileData?.role === 'user') {
+            router.replace('/userDashboard');
+          } else {
+            // Default to admin dashboard if role is not found
+            router.replace('/adminDashboard');
+          }
         }, 2000);
       } catch (error: any) {
         console.error('Login error:', error);
