@@ -18,6 +18,8 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
+import { UsersTable } from '../src/components/UsersTable';
+import { UserModal } from '../src/components/UserModal';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -27,13 +29,12 @@ export default function AdminDashboardScreen() {
   const { signOut, userProfile, user, session } = useAuth();
   const { showToast } = useToast();
   
-  // Add user form state
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  // Modal and user management state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [showAddUserForm, setShowAddUserForm] = useState(false);
   const [checkingCompany, setCheckingCompany] = useState(true);
+  const [refreshUsersTable, setRefreshUsersTable] = useState(0);
 
   // Check if company exists for admin user
   useEffect(() => {
@@ -71,56 +72,77 @@ export default function AdminDashboardScreen() {
     router.replace('/');
   };
 
-  const handleAddUser = async () => {
-    if (!firstName || !lastName || !phoneNumber) {
-      showToast('Please fill in all fields', 'error');
-      return;
-    }
-
-    // Validate phone number format
-    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
-    if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
-      showToast('Please enter a valid phone number', 'error');
-      return;
-    }
-
+  const handleSaveUser = async (userData: any) => {
     setLoading(true);
 
     try {
-      const userData: any = {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone_no: phoneNumber.trim(),
-        role: 'user',
-      };
+      if (editingUser) {
+        // Update existing user
+        const { error: updateError } = await supabase
+          .from('users')
+          .update(userData)
+          .eq('id', editingUser.id);
 
-      const { error: dbError } = await supabase
-        .from('users')
-        .insert([userData]);
+        if (updateError) {
+          console.error('Database error:', updateError);
+          const errorMessage = updateError.message || 'Failed to update user.';
+          throw new Error(
+            `Database error: ${errorMessage}. Please check your table structure.`
+          );
+        }
 
-      if (dbError) {
-        console.error('Database error:', dbError);
-        const errorMessage = dbError.message || 'Failed to create user profile.';
-        throw new Error(
-          `Database error: ${errorMessage}. Please check your table structure.`
-        );
+        showToast('User updated successfully!', 'success', 2000);
+      } else {
+        // Create new user
+        const newUserData = {
+          ...userData,
+          role: 'user',
+        };
+
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([newUserData]);
+
+        if (insertError) {
+          console.error('Database error:', insertError);
+          const errorMessage = insertError.message || 'Failed to create user profile.';
+          throw new Error(
+            `Database error: ${errorMessage}. Please check your table structure.`
+          );
+        }
+
+        showToast('User created successfully!', 'success', 2000);
       }
 
-      showToast('User created successfully!', 'success', 2000);
-      
-      // Reset form
-      setFirstName('');
-      setLastName('');
-      setPhoneNumber('');
-      setShowAddUserForm(false);
+      // Close modal and refresh table
+      setShowUserModal(false);
+      setEditingUser(null);
+      setRefreshUsersTable(prev => prev + 1);
     } catch (error: any) {
-      console.error('Add user error:', error);
+      console.error('Save user error:', error);
       showToast(
-        error.message || 'An error occurred while creating the user. Please try again.',
+        error.message || 'An error occurred. Please try again.',
         'error'
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddUser = () => {
+    setEditingUser(null);
+    setShowUserModal(true);
+  };
+
+  const handleEditUser = (user: any) => {
+    setEditingUser(user);
+    setShowUserModal(true);
+  };
+
+  const handleCloseModal = () => {
+    if (!loading) {
+      setShowUserModal(false);
+      setEditingUser(null);
     }
   };
 
@@ -167,60 +189,39 @@ export default function AdminDashboardScreen() {
             </Text>
           </View>
 
-          {/* Add User Section */}
+          {/* Users Table Section */}
           <View style={styles.contentSection}>
-            
-              <View style={styles.addUserForm}>
-                <Text style={styles.formTitle}>Create New User</Text>
-                
-                <View style={styles.inputContainer}>
-                  <Input
-                    variant="text"
-                    label="First Name"
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    style={styles.input}
-                    autoCapitalize="words"
-                  />
-                  <Input
-                    variant="text"
-                    label="Last Name"
-                    value={lastName}
-                    onChangeText={setLastName}
-                    style={styles.input}
-                    autoCapitalize="words"
-                  />
-                  <Input
-                    variant="text"
-                    label="Phone Number"
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    style={styles.input}
-                    keyboardType="phone-pad"
-                    placeholder="Phone Number"
-                  />
-                </View>
-
-                <View style={styles.formButtonsContainer}>
-                  <Button
-                    variant="gradient"
-                    title={loading ? 'Creating User...' : 'Create User'}
-                    onPress={handleAddUser}
-                    disabled={loading}
-                    style={styles.createButton}
-                  />
-                  {loading && (
-                    <View style={styles.loadingContainer}>
-                      <LoadingBar variant="bar" />
-                    </View>
-                  )}
-                </View>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderText}>
+                <Text style={styles.sectionTitle}>All Users</Text>
+                <Text style={styles.sectionText}>
+                  View and manage all users in your system.
+                </Text>
               </View>
-            
+              <View style={styles.addUserButtonContainer}>
+                <Button
+                  variant="gradient"
+                  title="Add User"
+                  onPress={handleAddUser}
+                  style={styles.addUserButton}
+                />
+              </View>
+            </View>
+            <UsersTable
+              key={refreshUsersTable}
+              onEditUser={handleEditUser}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
       <BottomNavBar />
+      <UserModal
+        visible={showUserModal}
+        onClose={handleCloseModal}
+        onSave={handleSaveUser}
+        editingUser={editingUser}
+        loading={loading}
+      />
     </SafeAreaView>
   );
 }
@@ -290,46 +291,27 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 16,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    // marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  sectionHeaderText: {
+    flex: 1,
+    minWidth: 200,
+    marginRight: 12,
+    marginBottom: 8,
+  },
   addUserButtonContainer: {
-    marginTop: 8,
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    marginBottom: 8,
   },
   addUserButton: {
-    maxWidth: 300,
-  },
-  addUserForm: {
-    marginTop: 16,
-    padding: 20,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 20,
-  },
-  inputContainer: {
-    width: '100%',
-  },
-  input: {
-    marginBottom: 16,
-  },
-  formButtonsContainer: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  createButton: {
-    maxWidth: 300,
-    marginBottom: 12,
-  },
-  loadingContainer: {
-    marginTop: 8,
-    width: '100%',
-    maxWidth: 300,
-    marginBottom: 12,
+    minWidth: 120,
+    maxWidth: 150,
   },
   loadingFullContainer: {
     flex: 1,
