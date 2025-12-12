@@ -133,6 +133,17 @@ export default function LoginScreen() {
       setLoading(true);
 
       try {
+        // Check if user exists in database
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('phone_no', phoneNumber.trim())
+          .single();
+
+        if (userError || !userData) {
+          throw new Error('Phone number not found. Please contact admin.');
+        }
+
         // TODO: Implement OTP sending logic with Supabase Phone Auth
         // For now, this is a placeholder that simulates OTP sending
         // You'll need to configure Supabase Phone Auth and use:
@@ -146,6 +157,14 @@ export default function LoginScreen() {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         showToast('Verification code has been sent to your phone number', 'success');
+        
+        // Navigate to OTP verification screen
+        setTimeout(() => {
+          router.push({
+            pathname: '/verifyOtp',
+            params: { phoneNumber: phoneNumber.trim() },
+          });
+        }, 1500);
       } catch (error: any) {
         console.error('OTP sending error:', error);
         showToast(

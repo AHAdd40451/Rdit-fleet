@@ -14,7 +14,7 @@ function RootLayoutNav() {
     if (loading) return;
 
     const currentRoute = segments[0];
-    const isAuthRoute = currentRoute === 'index' || currentRoute === 'signup' || currentRoute === '(auth)';
+    const isAuthRoute = currentRoute === 'index' || currentRoute === 'signup' || currentRoute === 'verifyOtp' || currentRoute === '(auth)';
     const isDashboardRoute = currentRoute === 'adminDashboard' || currentRoute === 'userDashboard' || currentRoute === 'home';
 
     if (!session) {
@@ -23,7 +23,7 @@ function RootLayoutNav() {
         // Trying to access protected route, redirect to login
         router.replace('/');
       }
-      // If on auth route, stay there
+      // If on auth route (including verifyOtp), stay there
     } else {
       // User is signed in
       if (isAuthRoute) {
@@ -75,6 +75,12 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="userDashboard"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="verifyOtp"
         options={{
           headerShown: false,
         }}
