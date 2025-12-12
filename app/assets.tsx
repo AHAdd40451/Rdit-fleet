@@ -119,9 +119,11 @@ export default function AssetsScreen() {
           user_id: currentUserId,
         };
 
-        const { error: insertError } = await supabase
+        const { data: insertedAsset, error: insertError } = await supabase
           .from('assets')
-          .insert([newAssetData]);
+          .insert([newAssetData])
+          .select()
+          .single();
 
         if (insertError) {
           console.error('Database error:', insertError);
@@ -129,6 +131,42 @@ export default function AssetsScreen() {
           throw new Error(
             `Database error: ${errorMessage}. Please check your table structure.`
           );
+        }
+
+        // Create notifications for all users linked to this admin
+        if (insertedAsset && userProfile?.role === 'admin') {
+          try {
+            // Find all users where userId matches the admin's ID
+            const { data: linkedUsers, error: usersError } = await supabase
+              .from('users')
+              .select('id')
+              .eq('userId', currentUserId)
+              .eq('role', 'user');
+
+            if (!usersError && linkedUsers && linkedUsers.length > 0) {
+              // Create notifications for each linked user
+              const notifications = linkedUsers.map(user => ({
+                user_id: user.id,
+                message: `New asset "${assetData.asset_name}" has been created by your admin.`,
+                type: 'asset_created',
+                asset_id: insertedAsset.id,
+                read: false,
+                created_at: new Date().toISOString(),
+              }));
+
+              const { error: notificationError } = await supabase
+                .from('notifications')
+                .insert(notifications);
+
+              if (notificationError) {
+                console.error('Error creating notifications:', notificationError);
+                // Don't throw error here, asset was created successfully
+              }
+            }
+          } catch (notificationErr) {
+            console.error('Error in notification creation:', notificationErr);
+            // Don't throw error here, asset was created successfully
+          }
         }
 
         showToast('Asset created successfully!', 'success', 2000);

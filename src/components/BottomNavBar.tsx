@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 const THEME_COLOR = '#14AB98';
 
@@ -15,6 +17,53 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
   const segments = useSegments();
   const insets = useSafeAreaInsets();
   const currentSegment = activeRoute || segments[0] || '';
+  const { userProfile } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!userProfile?.id) return;
+
+      try {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userProfile.id)
+          .eq('read', false);
+
+        if (!error && count !== null) {
+          setUnreadCount(count);
+        }
+      } catch (err) {
+        console.error('Error fetching unread count:', err);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Set up real-time subscription for notifications
+    if (userProfile?.id) {
+      const channel = supabase
+        .channel('notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userProfile.id}`,
+          },
+          () => {
+            fetchUnreadCount();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [userProfile]);
 
   const handleNavigation = (route: string) => {
     router.push(route as any);
@@ -70,11 +119,20 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
           onPress={() => handleNavigation('/notifications')}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name={isActive('/notifications') ? 'notifications' : 'notifications-outline'}
-            size={24}
-            color={isActive('/notifications') ? THEME_COLOR : '#666'}
-          />
+          <View style={styles.notificationContainer}>
+            <Ionicons
+              name={isActive('/notifications') ? 'notifications' : 'notifications-outline'}
+              size={24}
+              color={isActive('/notifications') ? THEME_COLOR : '#666'}
+            />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
 
         {/* Profile/Person Icon */}
@@ -146,5 +204,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 6,
+  },
+  notificationContainer: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    backgroundColor: '#ff4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });
