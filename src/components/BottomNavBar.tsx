@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 const THEME_COLOR = '#14AB98';
 
@@ -12,6 +13,7 @@ interface BottomNavBarProps {
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
   const router = useRouter();
   const segments = useSegments();
+  const insets = useSafeAreaInsets();
   const currentSegment = activeRoute || segments[0] || '';
 
   const handleNavigation = (route: string) => {
@@ -25,7 +27,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.navBar}>
         {/* Home Icon */}
         <TouchableOpacity
@@ -40,16 +42,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
           />
         </TouchableOpacity>
 
-        {/* Wallet Icon */}
+        {/* Truck Icon */}
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => handleNavigation('/wallet')}
+          onPress={() => handleNavigation('/assets')}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name={isActive('/wallet') ? 'wallet' : 'wallet-outline'}
+          <MaterialIcons
+            name="local-shipping"
             size={24}
-            color={isActive('/wallet') ? THEME_COLOR : '#666'}
+            color={isActive('/assets') ? THEME_COLOR : '#666'}
           />
         </TouchableOpacity>
 
@@ -62,16 +64,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
           <Ionicons name="add" size={28} color="#FFF" />
         </TouchableOpacity>
 
-        {/* Message/Speech Bubble Icon */}
+        {/* Notification Icon */}
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => handleNavigation('/messages')}
+          onPress={() => handleNavigation('/notifications')}
           activeOpacity={0.7}
         >
           <Ionicons
-            name={isActive('/messages') ? 'chatbubble' : 'chatbubble-outline'}
+            name={isActive('/notifications') ? 'notifications' : 'notifications-outline'}
             size={24}
-            color={isActive('/messages') ? THEME_COLOR : '#666'}
+            color={isActive('/notifications') ? THEME_COLOR : '#666'}
           />
         </TouchableOpacity>
 
@@ -106,8 +108,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    paddingBottom: 20,
+    paddingVertical: 0,
+    // paddingBottom: 20,
     width: '100%',
     height: 70,
     borderTopWidth: 1,
