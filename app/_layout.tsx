@@ -21,9 +21,11 @@ function RootLayoutNav() {
     // Check if user is authenticated (either via Supabase session or phone-based auth)
     const isAuthenticated = session || userProfile;
 
+    const isAssetsRoute = currentRoute === 'assets';
+
     if (!isAuthenticated) {
       // User is not signed in
-      if (isDashboardRoute || isCompanyRoute) {
+      if (isDashboardRoute || isCompanyRoute || isAssetsRoute) {
         // Trying to access protected route, redirect to login
         router.replace('/');
       }
@@ -44,7 +46,7 @@ function RootLayoutNav() {
         // User is signed in and accessing dashboard routes
         // Ensure they're on the right dashboard based on role
         // Note: Individual pages (adminDashboard, company) handle their own redirects
-        if (userProfile.role === 'admin' && currentRoute !== 'adminDashboard' && currentRoute !== 'home' && currentRoute !== 'company') {
+        if (userProfile.role === 'admin' && currentRoute !== 'adminDashboard' && currentRoute !== 'home' && currentRoute !== 'company' && currentRoute !== 'assets') {
           router.replace('/adminDashboard');
         } else if (userProfile.role === 'user' && currentRoute !== 'userDashboard' && currentRoute !== 'home') {
           router.replace('/userDashboard');
@@ -93,6 +95,12 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="company"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="assets"
         options={{
           headerShown: false,
         }}
