@@ -17,6 +17,7 @@ import { LoadingBar } from '../src/components/LoadingBar';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
+import { BottomNavBar } from '../src/components/BottomNavBar';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -219,6 +220,7 @@ export default function AdminDashboardScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -232,7 +234,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',

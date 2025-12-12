@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { useAuth } from '../src/contexts/AuthContext';
+import { BottomNavBar } from '../src/components/BottomNavBar';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -60,6 +61,7 @@ export default function UserDashboardScreen() {
           </Text>
         </View>
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -70,7 +72,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
