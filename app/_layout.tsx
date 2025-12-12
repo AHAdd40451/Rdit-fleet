@@ -17,7 +17,10 @@ function RootLayoutNav() {
     const isAuthRoute = currentRoute === 'index' || currentRoute === 'signup' || currentRoute === 'verifyOtp' || currentRoute === '(auth)';
     const isDashboardRoute = currentRoute === 'adminDashboard' || currentRoute === 'userDashboard' || currentRoute === 'home';
 
-    if (!session) {
+    // Check if user is authenticated (either via Supabase session or phone-based auth)
+    const isAuthenticated = session || userProfile;
+
+    if (!isAuthenticated) {
       // User is not signed in
       if (isDashboardRoute) {
         // Trying to access protected route, redirect to login
@@ -25,7 +28,7 @@ function RootLayoutNav() {
       }
       // If on auth route (including verifyOtp), stay there
     } else {
-      // User is signed in
+      // User is signed in (via email or phone)
       if (isAuthRoute) {
         // User is signed in and trying to access auth routes (login/signup)
         // Redirect to appropriate dashboard based on role

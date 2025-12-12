@@ -144,14 +144,23 @@ export default function LoginScreen() {
           throw new Error('Phone number not found. Please contact admin.');
         }
 
-        // TODO: Implement OTP sending logic with Supabase Phone Auth
-        // For now, this is a placeholder that simulates OTP sending
-        // You'll need to configure Supabase Phone Auth and use:
-        // const { data, error } = await supabase.auth.signInWithOtp({
-        //   phone: phoneNumber,
-        // });
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
-        console.log('Send code to:', { phoneNumber, loginType });
+        // Save OTP to users table (no expiration)
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ otp: otp })
+          .eq('phone_no', phoneNumber.trim());
+
+        if (updateError) {
+          console.error('Error saving OTP:', updateError);
+          throw new Error('Failed to send verification code. Please try again.');
+        }
+        
+        // TODO: In production, send OTP via SMS service (Twilio, AWS SNS, etc.)
+        // For now, log it for testing purposes
+        console.log('OTP sent to', phoneNumber, ':', otp);
         
         // Simulate API call delay
         await new Promise(resolve => setTimeout(resolve, 1000));

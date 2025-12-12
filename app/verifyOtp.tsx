@@ -15,6 +15,7 @@ import { LoadingBar } from '../src/components/LoadingBar';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function VerifyOtpScreen() {
   const router = useRouter();
@@ -35,36 +36,53 @@ export default function VerifyOtpScreen() {
     try {
       const phoneNumber = params.phoneNumber;
 
-      // Check if user exists in database
+      // Check if user exists in database and get OTP
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('phone_number', phoneNumber)
+        .eq('phone_no', phoneNumber)
         .single();
 
       if (userError || !userData) {
         throw new Error('User not found. Please contact admin.');
       }
 
-      // TODO: Implement actual OTP verification with Supabase Phone Auth
-      // In production, use: 
-      // const { data, error } = await supabase.auth.verifyOtp({ 
-      //   phone: phoneNumber, 
-      //   token: otp 
-      // });
-      // This will automatically create a session
+      // Check if OTP exists
+      if (!userData.otp) {
+        throw new Error('No OTP found. Please request a new code.');
+      }
 
-      // For now, simulate OTP verification (remove this in production)
-      // Default OTP for testing: 123456
-      if (otp !== '123456') {
+      // Verify OTP (no expiration check)
+      if (userData.otp !== otp) {
         throw new Error('Invalid OTP code. Please try again.');
       }
 
-      // Since we're not using Supabase Phone Auth yet, we need to create a session manually
-      // For production, the verifyOtp above will handle this automatically
-      // Workaround: Create a passwordless session or use email-based auth
-      // For now, we'll store user info and navigate - the userDashboard will work
-      // but won't have a full Supabase Auth session until Phone Auth is configured
+      // OTP is valid - clear OTP from database
+      const { error: clearOtpError } = await supabase
+        .from('users')
+        .update({ otp: null })
+        .eq('phone_no', phoneNumber);
+
+      if (clearOtpError) {
+        console.error('Error clearing OTP:', clearOtpError);
+        // Don't throw error here, OTP is already verified
+      }
+
+      // Store user info in AsyncStorage for phone-based authentication
+      // This allows AuthContext to recognize the user as authenticated
+      const userProfileData = {
+        id: userData.id,
+        phone_no: userData.phone_no,
+        email: userData.email || undefined,
+        role: userData.role,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+      };
+      
+      await AsyncStorage.setItem('phone_user', JSON.stringify(userProfileData));
+
+      // Refresh user profile in AuthContext
+      await refreshUserProfile();
 
       showToast('OTP verified successfully!', 'success', 2000);
 
@@ -72,8 +90,6 @@ export default function VerifyOtpScreen() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Navigate to user dashboard
-      // Note: In production with Supabase Phone Auth configured, 
-      // the session will be created automatically and refreshUserProfile will work
       router.replace('/userDashboard');
     } catch (error: any) {
       console.error('OTP verification error:', error);
@@ -95,17 +111,34 @@ export default function VerifyOtpScreen() {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('phone_number', phoneNumber)
+        .eq('phone_no', phoneNumber)
         .single();
 
       if (userError || !userData) {
         throw new Error('User not found. Please contact admin.');
       }
 
-      // TODO: Implement actual OTP resend with Supabase Phone Auth
-      // await supabase.auth.signInWithOtp({ phone: phoneNumber });
+      // Generate new 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Simulate resend
+      // Save new OTP to users table (no expiration)
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ otp: otp })
+        .eq('phone_no', phoneNumber);
+      
+      console.log('Resent OTP for', phoneNumber, ':', otp);
+
+      if (updateError) {
+        console.error('Error saving OTP:', updateError);
+        throw new Error('Failed to resend verification code. Please try again.');
+      }
+
+      // TODO: In production, send OTP via SMS service (Twilio, AWS SNS, etc.)
+      // For now, log it for testing purposes
+      console.log('Resent OTP for', phoneNumber, ':', otp);
+      
+      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       showToast('OTP code has been resent to your phone number', 'success');
