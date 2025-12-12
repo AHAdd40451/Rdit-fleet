@@ -16,13 +16,14 @@ function RootLayoutNav() {
     const currentRoute = segments[0];
     const isAuthRoute = currentRoute === 'index' || currentRoute === 'signup' || currentRoute === 'verifyOtp' || currentRoute === '(auth)';
     const isDashboardRoute = currentRoute === 'adminDashboard' || currentRoute === 'userDashboard' || currentRoute === 'home';
+    const isCompanyRoute = currentRoute === 'company';
 
     // Check if user is authenticated (either via Supabase session or phone-based auth)
     const isAuthenticated = session || userProfile;
 
     if (!isAuthenticated) {
       // User is not signed in
-      if (isDashboardRoute) {
+      if (isDashboardRoute || isCompanyRoute) {
         // Trying to access protected route, redirect to login
         router.replace('/');
       }
@@ -32,6 +33,7 @@ function RootLayoutNav() {
       if (isAuthRoute) {
         // User is signed in and trying to access auth routes (login/signup)
         // Redirect to appropriate dashboard based on role
+        // Note: Login/signup flows handle company checks for admins
         if (userProfile?.role === 'admin') {
           router.replace('/adminDashboard');
         } else if (userProfile?.role === 'user') {
@@ -41,7 +43,8 @@ function RootLayoutNav() {
       } else if (isDashboardRoute && userProfile) {
         // User is signed in and accessing dashboard routes
         // Ensure they're on the right dashboard based on role
-        if (userProfile.role === 'admin' && currentRoute !== 'adminDashboard' && currentRoute !== 'home') {
+        // Note: Individual pages (adminDashboard, company) handle their own redirects
+        if (userProfile.role === 'admin' && currentRoute !== 'adminDashboard' && currentRoute !== 'home' && currentRoute !== 'company') {
           router.replace('/adminDashboard');
         } else if (userProfile.role === 'user' && currentRoute !== 'userDashboard' && currentRoute !== 'home') {
           router.replace('/userDashboard');
@@ -84,6 +87,12 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="verifyOtp"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="company"
         options={{
           headerShown: false,
         }}

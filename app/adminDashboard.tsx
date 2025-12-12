@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ const BRIGHT_GREEN = '#B0E56D';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
-  const { signOut, userProfile } = useAuth();
+  const { signOut, userProfile, user, session } = useAuth();
   const { showToast } = useToast();
   
   // Add user form state
@@ -32,6 +32,38 @@ export default function AdminDashboardScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [showAddUserForm, setShowAddUserForm] = useState(false);
+  const [checkingCompany, setCheckingCompany] = useState(true);
+
+  // Check if company exists for admin user
+  useEffect(() => {
+    const checkCompany = async () => {
+      if (!session?.user?.id || userProfile?.role !== 'admin') {
+        setCheckingCompany(false);
+        return;
+      }
+
+      try {
+        const { data: companyData, error } = await supabase
+          .from('company')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .single();
+
+        // If company doesn't exist, redirect to company setup page
+        if (error || !companyData) {
+          router.replace('/company');
+          return;
+        }
+
+        setCheckingCompany(false);
+      } catch (error) {
+        console.error('Error checking company:', error);
+        setCheckingCompany(false);
+      }
+    };
+
+    checkCompany();
+  }, [session, userProfile, router]);
 
   const handleLogout = async () => {
     await signOut();
@@ -54,8 +86,6 @@ export default function AdminDashboardScreen() {
     setLoading(true);
 
     try {
-      // Insert user data into users table with role='user'
-      // No password needed - users will login with phone number and OTP
       const userData: any = {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -92,6 +122,17 @@ export default function AdminDashboardScreen() {
       setLoading(false);
     }
   };
+
+  // Show loading while checking company
+  if (checkingCompany) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingFullContainer}>
+          <LoadingBar variant="bar" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -287,6 +328,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 300,
     marginBottom: 12,
+  },
+  loadingFullContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
 });
 

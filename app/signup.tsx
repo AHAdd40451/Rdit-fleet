@@ -19,7 +19,7 @@ import { useAuth } from '../src/contexts/AuthContext';
 export default function SignupScreen() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { session, userProfile } = useAuth();
+  const { session, userProfile, refreshUserProfile } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -72,23 +72,13 @@ export default function SignupScreen() {
       if (!authData.user) {
         throw new Error('Failed to create user account');
       }
-
-      // Insert user data into users table with role='user' (default role for new signups)
-      // The 'id' field is auto-incrementing integer, so we don't include it
-      // Note: Password is stored in Supabase Auth, but if your table requires it, we include it here
-      // Ideally, the password field should be removed from the users table since auth handles passwords
       const userData: any = {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
-        password: password, // Required by table, but password is primarily managed by Supabase Auth
-        role: 'user', // Default role for new signups
+        password: password,
+        role: 'admin', 
       };
-
-      // Only include auth_user_id if the column exists in your table
-      // Uncomment the line below if your table has an auth_user_id column (UUID type)
-      // userData.auth_user_id = authData.user.id;
-
       const { error: dbError } = await supabase
         .from('users')
         .insert([userData]);
@@ -102,10 +92,25 @@ export default function SignupScreen() {
         );
       }
 
+      // Refresh user profile to get the updated role
+      await refreshUserProfile();
+
       showToast('Account created successfully!', 'success', 2000);
-      // Navigate after a short delay to show the success toast
-      setTimeout(() => {
-        router.push('/');
+      setTimeout(async () => {
+        // Get the created user profile to check role
+        const { data: profileData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('email', email.trim())
+          .single();
+
+        if (profileData?.role === 'admin') {
+          // Admin should go to company setup page
+          router.replace('/company');
+        } else {
+          // Regular users go to login
+          router.replace('/');
+        }
       }, 2000);
     } catch (error: any) {
       console.error('Signup error:', error);

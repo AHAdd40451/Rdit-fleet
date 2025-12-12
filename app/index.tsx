@@ -87,9 +87,22 @@ export default function LoginScreen() {
         showToast('Login successful!', 'success', 2000);
         
         // Navigate to appropriate dashboard based on role
-        setTimeout(() => {
+        setTimeout(async () => {
           if (profileData?.role === 'admin') {
-            router.replace('/adminDashboard');
+            // Check if company exists for admin
+            const { data: companyData, error: companyError } = await supabase
+              .from('company')
+              .select('id')
+              .eq('user_id', data.user.id)
+              .single();
+
+            // If company doesn't exist, redirect to company setup page
+            if (companyError || !companyData) {
+              router.replace('/company');
+            } else {
+              // Company exists, redirect to admin dashboard
+              router.replace('/adminDashboard');
+            }
           } else if (profileData?.role === 'user') {
             router.replace('/userDashboard');
           } else {
