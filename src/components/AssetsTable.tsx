@@ -45,17 +45,66 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
       setLoading(true);
       setError(null);
 
-      // Get current admin user ID
-      const currentUserId = session?.user?.id || userProfile?.id;
+      // Determine which user_id to filter by
+      let filterUserId: string | undefined;
       
-      if (!currentUserId) {
-        throw new Error('Unable to identify current user. Please log in again.');
+      if (userProfile?.role === 'admin') {
+        // Admin users: show assets where user_id matches their session.user.id (their own assets)
+        filterUserId = session?.user?.id;
+      } else if (userProfile?.role === 'user') {
+        // Regular users: show assets where user_id matches their userId (the admin who created them)
+        // Check if userId is already in userProfile, otherwise fetch it
+        if (userProfile.userId) {
+          filterUserId = userProfile.userId;
+        } else if (userProfile.id) {
+          // Fetch userId from users table
+          const { data: fullUserProfile } = await supabase
+            .from('users')
+            .select('userId')
+            .eq('id', userProfile.id)
+            .single();
+          
+          if (fullUserProfile?.userId) {
+            filterUserId = fullUserProfile.userId;
+          }
+        } else if (userProfile.email) {
+          const { data: fullUserProfile } = await supabase
+            .from('users')
+            .select('userId')
+            .eq('email', userProfile.email)
+            .single();
+          
+          if (fullUserProfile?.userId) {
+            filterUserId = fullUserProfile.userId;
+          }
+        } else if (userProfile.phone_no) {
+          const { data: fullUserProfile } = await supabase
+            .from('users')
+            .select('userId')
+            .eq('phone_no', userProfile.phone_no)
+            .single();
+          
+          if (fullUserProfile?.userId) {
+            filterUserId = fullUserProfile.userId;
+          }
+        }
+      } else {
+        // Fallback: use session.user.id if available
+        filterUserId = session?.user?.id;
+      }
+      
+      if (!filterUserId) {
+        // No user ID found to filter by
+        setAssets([]);
+        setLoading(false);
+        return;
       }
 
+      // Fetch assets matching the filter user_id
       const { data, error: fetchError } = await supabase
         .from('assets')
         .select('*')
-        .eq('user_id', currentUserId)
+        .eq('user_id', filterUserId)
         .order('created_at', { ascending: false });
 
       if (fetchError) {

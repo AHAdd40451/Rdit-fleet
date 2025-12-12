@@ -77,6 +77,7 @@ export default function VerifyOtpScreen() {
         role: userData.role,
         first_name: userData.first_name,
         last_name: userData.last_name,
+        userId: userData.userId || undefined, // Include userId field
       };
       
       await AsyncStorage.setItem('phone_user', JSON.stringify(userProfileData));

@@ -88,8 +88,9 @@ export default function AssetsScreen() {
     setLoading(true);
 
     try {
-      // Get current admin user ID
-      const currentUserId = session?.user?.id || userProfile?.id;
+      // Assets table uses UUID (from Supabase auth session.user.id)
+      // Must use UUID, not numeric userProfile.id
+      const currentUserId = session?.user?.id;
       
       if (!currentUserId) {
         throw new Error('Unable to identify current user. Please log in again.');
@@ -217,14 +218,16 @@ export default function AssetsScreen() {
                   View and manage all assets in your fleet.
                 </Text>
               </View>
-              <View style={styles.addAssetButtonContainer}>
-                <Button
-                  variant="gradient"
-                  title="Add Asset"
-                  onPress={handleAddAsset}
-                  style={styles.addAssetButton}
-                />
-              </View>
+              {userProfile?.role === 'admin' && (
+                <View style={styles.addAssetButtonContainer}>
+                  <Button
+                    variant="gradient"
+                    title="Add Asset"
+                    onPress={handleAddAsset}
+                    style={styles.addAssetButton}
+                  />
+                </View>
+              )}
             </View>
             <AssetsTable
               key={refreshAssetsTable}

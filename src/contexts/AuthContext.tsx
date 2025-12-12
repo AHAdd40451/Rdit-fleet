@@ -12,6 +12,7 @@ interface UserProfile {
   role: UserRole;
   first_name?: string;
   last_name?: string;
+  userId?: string; // UUID of the user/admin who created this user
 }
 
 interface AuthContextType {
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       let query = supabase
         .from('users')
-        .select('id, email, phone_no, role, first_name, last_name');
+        .select('id, email, phone_no, role, first_name, last_name, userId');
       
       if (isPhone) {
         query = query.eq('phone_no', userId);
@@ -62,6 +63,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const phoneUserData = await AsyncStorage.getItem('phone_user');
       if (phoneUserData) {
         const userData = JSON.parse(phoneUserData);
+        // If userId is missing, fetch it from the database
+        if (!userData.userId && (userData.id || userData.phone_no || userData.email)) {
+          let query = supabase.from('users').select('userId');
+          if (userData.id) {
+            query = query.eq('id', userData.id);
+          } else if (userData.phone_no) {
+            query = query.eq('phone_no', userData.phone_no);
+          } else if (userData.email) {
+            query = query.eq('email', userData.email);
+          }
+          const { data: userProfileData } = await query.single();
+          if (userProfileData?.userId) {
+            userData.userId = userProfileData.userId;
+            // Update AsyncStorage with userId
+            await AsyncStorage.setItem('phone_user', JSON.stringify(userData));
+          }
+        }
         setUserProfile(userData);
         // Create a mock session object for phone users
         // This allows the app to treat phone users as authenticated
