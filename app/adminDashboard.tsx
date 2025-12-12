@@ -94,9 +94,17 @@ export default function AdminDashboardScreen() {
         showToast('User updated successfully!', 'success', 2000);
       } else {
         // Create new user
+        // Get current admin user ID
+        const currentUserId = session?.user?.id || userProfile?.id;
+        
+        if (!currentUserId) {
+          throw new Error('Unable to identify current user. Please log in again.');
+        }
+
         const newUserData = {
           ...userData,
           role: 'user',
+          userId: currentUserId, // Save the admin user ID who created this user
         };
 
         const { error: insertError } = await supabase
