@@ -22,10 +22,11 @@ function RootLayoutNav() {
     const isAuthenticated = session || userProfile;
 
     const isAssetsRoute = currentRoute === 'assets';
+    const isProfileRoute = currentRoute === 'profile';
 
     if (!isAuthenticated) {
       // User is not signed in
-      if (isDashboardRoute || isCompanyRoute || isAssetsRoute) {
+      if (isDashboardRoute || isCompanyRoute || isAssetsRoute || isProfileRoute) {
         // Trying to access protected route, redirect to login
         router.replace('/');
       }
@@ -101,6 +102,12 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="assets"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="profile"
         options={{
           headerShown: false,
         }}
