@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
 } from 'react-native';
+import PhoneInput from 'react-native-phone-number-input';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingBar } from './LoadingBar';
@@ -41,19 +42,23 @@ export const UserModal: React.FC<UserModalProps> = ({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
+  const phoneInput = useRef<PhoneInput>(null);
 
   useEffect(() => {
     if (editingUser) {
       setFirstName(editingUser.first_name || '');
       setLastName(editingUser.last_name || '');
-      setPhoneNumber(editingUser.phone_no || '');
-      setEmail(editingUser.email || '');
+      const phone = editingUser.phone_no || '';
+      setPhoneNumber(phone);
+      setFormattedPhoneNumber(phone);
     } else {
       // Reset form for new user
       setFirstName('');
       setLastName('');
       setPhoneNumber('');
+      setFormattedPhoneNumber('');
       setEmail('');
     }
   }, [editingUser, visible]);
@@ -63,11 +68,14 @@ export const UserModal: React.FC<UserModalProps> = ({
       return;
     }
 
-    // Validate phone number format
-    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
-    if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+    // Validate phone number using the library
+    const checkValid = phoneInput.current?.isValidNumber(phoneNumber);
+    if (!checkValid || !phoneNumber) {
       return;
     }
+    
+    // Use formatted phone number (with country code) from state
+    const formattedValue = formattedPhoneNumber || phoneNumber;
 
     // Validate email if provided
     if (email) {
@@ -80,7 +88,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     const userData: Omit<User, 'id'> = {
       first_name: firstName.trim(),
       last_name: lastName.trim(),
-      phone_no: phoneNumber.trim(),
+      phone_no: formattedValue.trim(),
       role: editingUser?.role || 'user',
     };
 
@@ -149,16 +157,28 @@ export const UserModal: React.FC<UserModalProps> = ({
                         autoCapitalize="words"
                         editable={!loading}
                       />
-                      <Input
-                        variant="text"
-                        label="Phone Number"
-                        value={phoneNumber}
-                        onChangeText={setPhoneNumber}
-                        style={styles.input}
-                        keyboardType="phone-pad"
-                        placeholder="Phone Number"
-                        editable={!loading}
-                      />
+                      <View style={styles.phoneInputContainer}>
+                        <PhoneInput
+                          ref={phoneInput}
+                          defaultValue={phoneNumber}
+                          defaultCode="US"
+                          layout="first"
+                          onChangeText={(text) => {
+                            setPhoneNumber(text);
+                          }}
+                          onChangeFormattedText={(text) => {
+                            setFormattedPhoneNumber(text);
+                          }}
+                          withDarkTheme={false}
+                          withShadow={false}
+                          autoFocus={false}
+                          disabled={loading}
+                          containerStyle={styles.phoneInput}
+                          textContainerStyle={styles.phoneInputTextContainer}
+                          textInputStyle={styles.phoneInputText}
+                          codeTextStyle={styles.phoneInputCodeText}
+                        />
+                      </View>
                       <Input
                         variant="text"
                         label="Email (Optional)"
@@ -274,6 +294,31 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 300,
     marginBottom: 12,
+  },
+  phoneInputContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  phoneInput: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+  },
+  phoneInputTextContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 0,
+  },
+  phoneInputText: {
+    fontSize: 16,
+    color: '#000',
+    paddingVertical: 0,
+  },
+  phoneInputCodeText: {
+    fontSize: 16,
+    color: '#000',
   },
 });
 

@@ -90,6 +90,31 @@ export const loginStyles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: '#fff',
   },
+  phoneInputContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  phoneInput: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+  },
+  phoneInputTextContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 0,
+  },
+  phoneInputText: {
+    fontSize: 16,
+    color: '#000',
+    paddingVertical: 0,
+  },
+  phoneInputCodeText: {
+    fontSize: 16,
+    color: '#000',
+  },
   passwordContainer: {
     marginBottom: 0,
   },

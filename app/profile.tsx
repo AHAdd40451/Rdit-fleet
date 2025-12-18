@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import PhoneInput from 'react-native-phone-number-input';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
@@ -32,8 +33,10 @@ export default function ProfileScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const phoneInput = useRef<PhoneInput>(null);
 
   // Load user profile data into form
   useEffect(() => {
@@ -41,7 +44,9 @@ export default function ProfileScreen() {
       setFirstName(userProfile.first_name || '');
       setLastName(userProfile.last_name || '');
       setEmail(userProfile.email || '');
-      setPhoneNumber(userProfile.phone_no || '');
+      const phone = userProfile.phone_no || '';
+      setPhoneNumber(phone);
+      setFormattedPhoneNumber(phone);
     }
   }, [userProfile]);
 
@@ -53,8 +58,8 @@ export default function ProfileScreen() {
 
     // Validate phone number if provided
     if (phoneNumber.trim()) {
-      const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
-      if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+      const checkValid = phoneInput.current?.isValidNumber(phoneNumber);
+      if (!checkValid) {
         showToast('Please enter a valid phone number', 'error');
         return;
       }
@@ -87,7 +92,9 @@ export default function ProfileScreen() {
       }
 
       if (phoneNumber.trim()) {
-        updateData.phone_no = phoneNumber.trim();
+        // Use formatted phone number (with country code) from state
+        const formattedValue = formattedPhoneNumber || phoneNumber;
+        updateData.phone_no = formattedValue.trim();
       }
 
       // Update user in database
@@ -141,14 +148,16 @@ export default function ProfileScreen() {
   };
 
   const handleCancelEdit = () => {
-    // Reset form to original values
-    if (userProfile) {
-      setFirstName(userProfile.first_name || '');
-      setLastName(userProfile.last_name || '');
-      setEmail(userProfile.email || '');
-      setPhoneNumber(userProfile.phone_no || '');
-    }
-    setIsEditing(false);
+      // Reset form to original values
+      if (userProfile) {
+        setFirstName(userProfile.first_name || '');
+        setLastName(userProfile.last_name || '');
+        setEmail(userProfile.email || '');
+        const phone = userProfile.phone_no || '';
+        setPhoneNumber(phone);
+        setFormattedPhoneNumber(phone);
+      }
+      setIsEditing(false);
   };
 
   if (!userProfile) {
@@ -252,14 +261,28 @@ export default function ProfileScreen() {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Phone Number</Text>
-              <Input
-                placeholder="Phone Number"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                editable={isEditing}
-                keyboardType="phone-pad"
-                style={styles.input}
-              />
+              <View style={styles.phoneInputWrapper}>
+                <PhoneInput
+                  ref={phoneInput}
+                  defaultValue={phoneNumber}
+                  defaultCode="US"
+                  layout="first"
+                  onChangeText={(text) => {
+                    setPhoneNumber(text);
+                  }}
+                  onChangeFormattedText={(text) => {
+                    setFormattedPhoneNumber(text);
+                  }}
+                  withDarkTheme={false}
+                  withShadow={false}
+                  autoFocus={false}
+                  disabled={!isEditing}
+                  containerStyle={styles.phoneInput}
+                  textContainerStyle={styles.phoneInputTextContainer}
+                  textInputStyle={styles.phoneInputText}
+                  codeTextStyle={styles.phoneInputCodeText}
+                />
+              </View>
             </View>
 
             {/* Save/Cancel Buttons */}
@@ -424,6 +447,30 @@ const styles = StyleSheet.create({
   saveButton: {
     width: '100%',
     marginBottom: 0,
+  },
+  phoneInputWrapper: {
+    width: '100%',
+  },
+  phoneInput: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+  },
+  phoneInputTextContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 0,
+  },
+  phoneInputText: {
+    fontSize: 16,
+    color: '#000',
+    paddingVertical: 0,
+  },
+  phoneInputCodeText: {
+    fontSize: 16,
+    color: '#000',
   },
 });
 

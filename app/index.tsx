@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Text,
   View,
@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import PhoneInput from 'react-native-phone-number-input';
 import { loginStyles as styles } from './loginStyles';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -26,8 +27,10 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
   const [loginType, setLoginType] = useState<LoginType>('admin');
   const [loading, setLoading] = useState(false);
+  const phoneInput = useRef<PhoneInput>(null);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -136,21 +139,25 @@ export default function LoginScreen() {
         return;
       }
 
-      // Validate phone number format (basic validation)
-      const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
-      if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+      // Validate phone number using the library
+      const checkValid = phoneInput.current?.isValidNumber(phoneNumber);
+      if (!checkValid || !phoneNumber) {
         showToast('Please enter a valid phone number', 'error');
         return;
       }
 
+      // Use formatted phone number (with country code) from state
+      const formattedValue = formattedPhoneNumber || phoneNumber;
+
       setLoading(true);
 
       try {
-        // Check if user exists in database
+        // Check if user exists in database - use formatted number or just the number
+        const phoneToSearch = formattedPhoneNumber || phoneNumber.trim();
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
-          .eq('phone_no', phoneNumber.trim())
+          .eq('phone_no', phoneToSearch)
           .single();
 
         if (userError || !userData) {
@@ -164,7 +171,7 @@ export default function LoginScreen() {
         const { error: updateError } = await supabase
           .from('users')
           .update({ otp: otp })
-          .eq('phone_no', phoneNumber.trim());
+          .eq('phone_no', phoneToSearch);
 
         if (updateError) {
           console.error('Error saving OTP:', updateError);
@@ -173,7 +180,7 @@ export default function LoginScreen() {
         
         // TODO: In production, send OTP via SMS service (Twilio, AWS SNS, etc.)
         // For now, log it for testing purposes
-        console.log('OTP sent to', phoneNumber, ':', otp);
+        console.log('OTP sent to', phoneToSearch, ':', otp);
         
         // Simulate API call delay
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -184,7 +191,7 @@ export default function LoginScreen() {
         setTimeout(() => {
           router.push({
             pathname: '/verifyOtp',
-            params: { phoneNumber: phoneNumber.trim() },
+            params: { phoneNumber: phoneToSearch },
           });
         }, 1500);
       } catch (error: any) {
@@ -290,15 +297,27 @@ export default function LoginScreen() {
                 />
               </>
             ) : (
-              <Input
-                variant="text"
-                label="Phone Number"
-                placeholder="Phone Number"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                style={styles.input}
-                keyboardType="phone-pad"
-              />
+              <View style={styles.phoneInputContainer}>
+                <PhoneInput
+                  ref={phoneInput}
+                  defaultValue={phoneNumber}
+                  defaultCode="US"
+                  layout="first"
+                  onChangeText={(text) => {
+                    setPhoneNumber(text);
+                  }}
+                  onChangeFormattedText={(text) => {
+                    setFormattedPhoneNumber(text);
+                  }}
+                  withDarkTheme={false}
+                  withShadow={false}
+                  autoFocus={false}
+                  containerStyle={styles.phoneInput}
+                  textContainerStyle={styles.phoneInputTextContainer}
+                  textInputStyle={styles.phoneInputText}
+                  codeTextStyle={styles.phoneInputCodeText}
+                />
+              </View>
             )}
           </View>
 
