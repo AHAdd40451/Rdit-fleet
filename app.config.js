@@ -17,6 +17,9 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
+      infoPlist: {
+        NSCameraUsageDescription: 'This app needs access to your camera to take photos of assets.',
+      },
     },
     android: {
       package: 'com.anonymous.reditfleet',
@@ -26,6 +29,7 @@ module.exports = {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      permissions: ['CAMERA'],
     },
     web: {
       favicon: './assets/favicon.png',

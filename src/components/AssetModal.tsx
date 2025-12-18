@@ -9,7 +9,10 @@ import {
   Platform,
   ScrollView,
   TouchableWithoutFeedback,
+  Image,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingBar } from './LoadingBar';
@@ -25,12 +28,13 @@ interface Asset {
   odometer: number | null;
   mileage: number | null;
   user_id: string;
+  photo?: string | null;
 }
 
 interface AssetModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (assetData: Omit<Asset, 'id' | 'user_id'>) => Promise<void>;
+  onSave: (assetData: Omit<Asset, 'id' | 'user_id' | 'photo'>) => Promise<void>;
   editingAsset?: Asset | null;
   loading?: boolean;
 }
@@ -50,6 +54,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
   const [year, setYear] = useState('');
   const [odometer, setOdometer] = useState('');
   const [mileage, setMileage] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   useEffect(() => {
     if (editingAsset) {
@@ -61,6 +66,8 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       setYear(editingAsset.year?.toString() || '');
       setOdometer(editingAsset.odometer?.toString() || '');
       setMileage(editingAsset.mileage?.toString() || '');
+      // Photo is not loaded from database, always start fresh
+      setPhotoUri(null);
     } else {
       // Reset form for new asset
       setAssetName('');
@@ -71,15 +78,51 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       setYear('');
       setOdometer('');
       setMileage('');
+      setPhotoUri(null);
     }
   }, [editingAsset, visible]);
+
+  const handleTakePhoto = async () => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Camera permission is required to take photos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoUri(null);
+  };
 
   const handleSave = async () => {
     if (!assetName || !vin) {
       return;
     }
 
-    const assetData: Omit<Asset, 'id' | 'user_id'> = {
+    const assetData: Omit<Asset, 'id' | 'user_id' | 'photo'> = {
       asset_name: assetName.trim(),
       color: color.trim() || '',
       vin: vin.trim(),
@@ -215,6 +258,40 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         editable={!loading}
                         placeholder="Enter mileage"
                       />
+                      
+                      {/* Photo Section */}
+                      <View style={styles.photoSection}>
+                        <Text style={styles.photoLabel}>Photo</Text>
+                        {photoUri ? (
+                          <View style={styles.photoContainer}>
+                            <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                            <View style={styles.photoActions}>
+                              <TouchableOpacity
+                                onPress={handleTakePhoto}
+                                style={styles.photoButton}
+                                disabled={loading}
+                              >
+                                <Text style={styles.photoButtonText}>Retake Photo</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={handleRemovePhoto}
+                                style={[styles.photoButton, styles.removeButton]}
+                                disabled={loading}
+                              >
+                                <Text style={styles.photoButtonText}>Remove</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={handleTakePhoto}
+                            style={styles.takePhotoButton}
+                            disabled={loading}
+                          >
+                            <Text style={styles.takePhotoButtonText}>📷 Take Photo</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
 
                     <View style={styles.buttonContainer}>
@@ -319,6 +396,64 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 300,
     marginBottom: 12,
+  },
+  photoSection: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  photoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  takePhotoButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+  },
+  takePhotoButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  photoContainer: {
+    width: '100%',
+  },
+  photoPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#f0f0f0',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  photoButton: {
+    flex: 1,
+    backgroundColor: '#14AB98',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeButton: {
+    backgroundColor: '#ff4444',
+  },
+  photoButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

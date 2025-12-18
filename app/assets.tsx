@@ -34,6 +34,7 @@ interface Asset {
   odometer: number | null;
   mileage: number | null;
   user_id: string;
+  photo?: string | null;
 }
 
 export default function AssetsScreen() {
