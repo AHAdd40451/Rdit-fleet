@@ -293,7 +293,7 @@ export default function LoginScreen() {
                   style={styles.input}
                   secureTextEntry
                   showForgotPassword
-                  onForgotPasswordPress={() => showToast('Forgot Password feature coming soon', 'info')}
+                  onForgotPasswordPress={() => router.push('/forgot-password')}
                 />
               </>
             ) : (

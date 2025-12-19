@@ -4,17 +4,48 @@ import { PaperProvider } from 'react-native-paper';
 import { ToastProvider } from '../src/components/Toast';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { useEffect } from 'react';
+import * as Linking from 'expo-linking';
 
 function RootLayoutNav() {
   const { session, userProfile, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
+  // Handle deep links for password reset
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      const { path, queryParams } = Linking.parse(event.url);
+      
+      // Handle password reset deep link
+      if (path === 'reset-password' || event.url.includes('reset-password')) {
+        // Navigate to reset-password screen with the URL parameters
+        router.replace({
+          pathname: '/reset-password',
+          params: queryParams,
+        });
+      }
+    };
+
+    // Get initial URL if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    // Listen for deep links while app is running
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
   useEffect(() => {
     if (loading) return;
 
     const currentRoute = segments[0];
-    const isAuthRoute = currentRoute === 'index' || currentRoute === 'signup' || currentRoute === 'verifyOtp' || currentRoute === '(auth)';
+    const isAuthRoute = currentRoute === 'index' || currentRoute === 'signup' || currentRoute === 'verifyOtp' || currentRoute === 'forgot-password' || currentRoute === 'reset-password' || currentRoute === '(auth)';
     const isDashboardRoute = currentRoute === 'adminDashboard' || currentRoute === 'userDashboard' || currentRoute === 'home';
     const isCompanyRoute = currentRoute === 'company';
 
@@ -114,6 +145,18 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="(auth)/login"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="forgot-password"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="reset-password"
         options={{
           headerShown: false,
         }}
