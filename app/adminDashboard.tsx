@@ -15,6 +15,7 @@ import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
@@ -28,6 +29,7 @@ export default function AdminDashboardScreen() {
   const router = useRouter();
   const { signOut, userProfile, user, session } = useAuth();
   const { showToast } = useToast();
+  const { showConfirmation } = useConfirmationModal();
   
   // Modal and user management state
   const [showUserModal, setShowUserModal] = useState(false);
@@ -67,9 +69,17 @@ export default function AdminDashboardScreen() {
     checkCompany();
   }, [session, userProfile, router]);
 
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/');
+  const handleLogout = () => {
+    showConfirmation({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        await signOut();
+        router.replace('/');
+      },
+    });
   };
 
   const handleSaveUser = async (userData: any) => {

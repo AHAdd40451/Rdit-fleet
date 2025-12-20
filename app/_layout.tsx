@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
 import { ToastProvider } from '../src/components/Toast';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { ConfirmationModalProvider } from '../src/contexts/ConfirmationModalContext';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 
@@ -170,8 +171,10 @@ export default function RootLayout() {
     <PaperProvider>
       <ToastProvider>
         <AuthProvider>
-          <RootLayoutNav />
-          <StatusBar style="auto" />
+          <ConfirmationModalProvider>
+            <RootLayoutNav />
+            <StatusBar style="auto" />
+          </ConfirmationModalProvider>
         </AuthProvider>
       </ToastProvider>
     </PaperProvider>

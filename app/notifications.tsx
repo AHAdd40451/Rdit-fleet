@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { supabase } from '../lib/supabase';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { BottomNavBar } from '../src/components/BottomNavBar';
@@ -32,6 +33,7 @@ interface Notification {
 export default function NotificationsScreen() {
   const router = useRouter();
   const { signOut, userProfile } = useAuth();
+  const { showConfirmation } = useConfirmationModal();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,9 +121,17 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/');
+  const handleLogout = () => {
+    showConfirmation({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        await signOut();
+        router.replace('/');
+      },
+    });
   };
 
   const onRefresh = () => {

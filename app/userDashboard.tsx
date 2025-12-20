@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 
 const TEAL_GREEN = '#14AB98';
@@ -19,10 +20,19 @@ const BRIGHT_GREEN = '#B0E56D';
 export default function UserDashboardScreen() {
   const router = useRouter();
   const { signOut, userProfile } = useAuth();
+  const { showConfirmation } = useConfirmationModal();
 
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/');
+  const handleLogout = () => {
+    showConfirmation({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        await signOut();
+        router.replace('/');
+      },
+    });
   };
 
   return (

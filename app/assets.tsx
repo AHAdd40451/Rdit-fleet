@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
@@ -42,6 +43,7 @@ export default function AssetsScreen() {
   const router = useRouter();
   const { signOut, userProfile, user, session } = useAuth();
   const { showToast } = useToast();
+  const { showConfirmation } = useConfirmationModal();
   
   // Modal and asset management state
   const [showAssetModal, setShowAssetModal] = useState(false);
@@ -83,9 +85,17 @@ export default function AssetsScreen() {
     checkCompany();
   }, [session, userProfile, router]);
 
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/');
+  const handleLogout = () => {
+    showConfirmation({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        await signOut();
+        router.replace('/');
+      },
+    });
   };
 
   const handleSaveAsset = async (assetData: Omit<Asset, 'id' | 'user_id'>) => {
