@@ -55,6 +55,11 @@ export const AssetModal: React.FC<AssetModalProps> = ({
   const [odometer, setOdometer] = useState('');
   const [mileage, setMileage] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{
+    vin?: string;
+    mileage?: string;
+    odometer?: string;
+  }>({});
 
   useEffect(() => {
     if (editingAsset) {
@@ -68,6 +73,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       setMileage(editingAsset.mileage?.toString() || '');
       // Photo is not loaded from database, always start fresh
       setPhotoUri(null);
+      setErrors({});
     } else {
       // Reset form for new asset
       setAssetName('');
@@ -79,6 +85,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       setOdometer('');
       setMileage('');
       setPhotoUri(null);
+      setErrors({});
     }
   }, [editingAsset, visible]);
 
@@ -117,8 +124,39 @@ export const AssetModal: React.FC<AssetModalProps> = ({
     setPhotoUri(null);
   };
 
+  const validateForm = () => {
+    const newErrors: {
+      vin?: string;
+      mileage?: string;
+      odometer?: string;
+    } = {};
+
+    if (!vin.trim()) {
+      newErrors.vin = 'VIN is required';
+    }
+
+    if (!mileage.trim()) {
+      newErrors.mileage = 'Mileage is required';
+    } else if (isNaN(parseInt(mileage, 10))) {
+      newErrors.mileage = 'Mileage must be a valid number';
+    }
+
+    if (!odometer.trim()) {
+      newErrors.odometer = 'Odometer is required';
+    } else if (isNaN(parseInt(odometer, 10))) {
+      newErrors.odometer = 'Odometer must be a valid number';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async () => {
     if (!assetName || !vin) {
+      return;
+    }
+
+    if (!validateForm()) {
       return;
     }
 
@@ -142,7 +180,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
     }
   };
 
-  const isFormValid = assetName.trim() && vin.trim();
+  const isFormValid = assetName.trim() && vin.trim() && mileage.trim() && odometer.trim();
 
   return (
     <Modal
@@ -188,16 +226,26 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         editable={!loading}
                         placeholder="Enter asset name"
                       />
-                      <Input
-                        variant="text"
-                        label="VIN *"
-                        value={vin}
-                        onChangeText={setVin}
-                        style={styles.input}
-                        autoCapitalize="characters"
-                        editable={!loading}
-                        placeholder="Enter VIN number"
-                      />
+                      <View>
+                        <Input
+                          variant="text"
+                          label="VIN *"
+                          value={vin}
+                          onChangeText={(text) => {
+                            setVin(text);
+                            if (errors.vin) {
+                              setErrors({ ...errors, vin: undefined });
+                            }
+                          }}
+                          style={styles.input}
+                          autoCapitalize="characters"
+                          editable={!loading}
+                          placeholder="Enter VIN number"
+                        />
+                        {errors.vin && (
+                          <Text style={styles.errorText}>{errors.vin}</Text>
+                        )}
+                      </View>
                       <Input
                         variant="text"
                         label="Make"
@@ -238,26 +286,46 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         editable={!loading}
                         placeholder="Enter color"
                       />
-                      <Input
-                        variant="text"
-                        label="Odometer"
-                        value={odometer}
-                        onChangeText={setOdometer}
-                        style={styles.input}
-                        keyboardType="numeric"
-                        editable={!loading}
-                        placeholder="Enter odometer reading"
-                      />
-                      <Input
-                        variant="text"
-                        label="Mileage"
-                        value={mileage}
-                        onChangeText={setMileage}
-                        style={styles.input}
-                        keyboardType="numeric"
-                        editable={!loading}
-                        placeholder="Enter mileage"
-                      />
+                      <View>
+                        <Input
+                          variant="text"
+                          label="Odometer *"
+                          value={odometer}
+                          onChangeText={(text) => {
+                            setOdometer(text);
+                            if (errors.odometer) {
+                              setErrors({ ...errors, odometer: undefined });
+                            }
+                          }}
+                          style={styles.input}
+                          keyboardType="numeric"
+                          editable={!loading}
+                          placeholder="Enter odometer reading"
+                        />
+                        {errors.odometer && (
+                          <Text style={styles.errorText}>{errors.odometer}</Text>
+                        )}
+                      </View>
+                      <View>
+                        <Input
+                          variant="text"
+                          label="Mileage *"
+                          value={mileage}
+                          onChangeText={(text) => {
+                            setMileage(text);
+                            if (errors.mileage) {
+                              setErrors({ ...errors, mileage: undefined });
+                            }
+                          }}
+                          style={styles.input}
+                          keyboardType="numeric"
+                          editable={!loading}
+                          placeholder="Enter mileage"
+                        />
+                        {errors.mileage && (
+                          <Text style={styles.errorText}>{errors.mileage}</Text>
+                        )}
+                      </View>
                       
                       {/* Photo Section */}
                       <View style={styles.photoSection}>
@@ -454,6 +522,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    marginLeft: 4,
   },
 });
 
