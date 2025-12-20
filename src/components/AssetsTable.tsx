@@ -28,10 +28,12 @@ interface Asset {
 
 interface AssetsTableProps {
   onEditAsset?: (asset: Asset) => void;
+  onAssetClick?: (asset: Asset) => void;
 }
 
 export const AssetsTable: React.FC<AssetsTableProps> = ({
   onEditAsset,
+  onAssetClick,
 }) => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -224,7 +226,12 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
             nestedScrollEnabled={true}
           >
             {assets.map((asset) => (
-              <View key={asset.id} style={styles.row}>
+              <TouchableOpacity
+                key={asset.id}
+                style={styles.row}
+                onPress={() => onAssetClick && onAssetClick(asset)}
+                activeOpacity={0.7}
+              >
                 <View style={[styles.cell, styles.nameCell]}>
                   <Text style={styles.cellText} numberOfLines={1}>
                     {asset.asset_name || 'N/A'}
@@ -268,14 +275,20 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
                 <View style={[styles.cell, styles.actionsCell]}>
                   <View style={styles.actionButtons}>
                     <TouchableOpacity
-                      onPress={() => handleEdit(asset)}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEdit(asset);
+                      }}
                       style={[styles.actionButton, styles.editButton]}
                       disabled={deletingAssetId === asset.id}
                     >
                       <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => handleDelete(asset)}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDelete(asset);
+                      }}
                       style={[styles.actionButton, styles.deleteButton]}
                       disabled={deletingAssetId === asset.id}
                     >
@@ -285,7 +298,7 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </View>

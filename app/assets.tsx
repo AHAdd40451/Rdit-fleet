@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import { AssetsTable } from '../src/components/AssetsTable';
 import { AssetModal } from '../src/components/AssetModal';
+import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -48,6 +49,8 @@ export default function AssetsScreen() {
   const [loading, setLoading] = useState(false);
   const [checkingCompany, setCheckingCompany] = useState(true);
   const [refreshAssetsTable, setRefreshAssetsTable] = useState(0);
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   // Check if company exists for admin user
   useEffect(() => {
@@ -198,6 +201,16 @@ export default function AssetsScreen() {
     setShowAssetModal(true);
   };
 
+  const handleAssetClick = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setShowBottomSheet(true);
+  };
+
+  const handleCloseBottomSheet = () => {
+    setShowBottomSheet(false);
+    setSelectedAsset(null);
+  };
+
   const handleCloseModal = () => {
     if (!loading) {
       setShowAssetModal(false);
@@ -271,6 +284,7 @@ export default function AssetsScreen() {
             <AssetsTable
               key={refreshAssetsTable}
               onEditAsset={handleEditAsset}
+              onAssetClick={handleAssetClick}
             />
           </View>
         </ScrollView>
@@ -282,6 +296,12 @@ export default function AssetsScreen() {
         onSave={handleSaveAsset}
         editingAsset={editingAsset}
         loading={loading}
+      />
+      <AssetBottomSheet
+        visible={showBottomSheet}
+        asset={selectedAsset}
+        onClose={handleCloseBottomSheet}
+        onEdit={handleEditAsset}
       />
     </SafeAreaView>
   );
