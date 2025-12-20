@@ -66,6 +66,9 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
     return null;
   }
 
+  const vehicleName = asset.asset_name || 'N/A';
+  const vehicleInfo = `${asset.year || ''} ${asset.make || ''} ${asset.model || ''}`.trim() || 'N/A';
+
   return (
     <Modal
       visible={visible}
@@ -91,12 +94,15 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerContent}>
-                <Text style={styles.title}>Asset Details</Text>
+                <View style={styles.headerTextContainer}>
+                  <Text style={styles.vehicleName}>{vehicleName}</Text>
+                  <Text style={styles.vehicleInfo}>{vehicleInfo}</Text>
+                </View>
                 <TouchableOpacity
                   onPress={onClose}
                   style={styles.closeButton}
                 >
-                  <Ionicons name="close" size={28} color="#666" />
+                  <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -105,78 +111,111 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
             <ScrollView
               style={styles.content}
               contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={true}
+              showsVerticalScrollIndicator={false}
             >
-              <View style={styles.detailsContainer}>
-                {/* Asset Name */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Asset Name</Text>
-                  <Text style={styles.value}>{asset.asset_name || 'N/A'}</Text>
-                </View>
-
-                {/* VIN */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>VIN</Text>
-                  <Text style={styles.value}>{asset.vin || 'N/A'}</Text>
-                </View>
-
-                {/* Make */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Make</Text>
-                  <Text style={styles.value}>{asset.make || 'N/A'}</Text>
-                </View>
-
-                {/* Model */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Model</Text>
-                  <Text style={styles.value}>{asset.model || 'N/A'}</Text>
-                </View>
-
-                {/* Year */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Year</Text>
-                  <Text style={styles.value}>
-                    {asset.year ? asset.year.toString() : 'N/A'}
-                  </Text>
-                </View>
-
-                {/* Color */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Color</Text>
-                  <Text style={styles.value}>{asset.color || 'N/A'}</Text>
-                </View>
-
-                {/* Odometer */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Odometer</Text>
-                  <Text style={styles.value}>
-                    {asset.odometer
-                      ? asset.odometer.toLocaleString()
-                      : 'N/A'}
-                  </Text>
-                </View>
-
-                {/* Mileage */}
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Mileage</Text>
-                  <Text style={styles.value}>
-                    {asset.mileage ? asset.mileage.toLocaleString() : 'N/A'}
-                  </Text>
-                </View>
-
-                {/* Created At */}
-                {asset.created_at && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.label}>Created At</Text>
-                    <Text style={styles.value}>
-                      {new Date(asset.created_at).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </Text>
+              {/* Top Row - Mileage and Odometer */}
+              <View style={styles.cardRow}>
+                <View style={styles.card}>
+                  <View style={styles.cardContent}>
+                    <Ionicons name="speedometer-outline" size={24} color="#666" style={styles.cardIcon} />
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardValue}>
+                        {asset.mileage ? `${asset.mileage.toLocaleString()} mi` : 'N/A'}
+                      </Text>
+                      <Text style={styles.cardLabel}>Mileage</Text>
+                    </View>
                   </View>
-                )}
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.cardContent}>
+                    <Ionicons name="analytics-outline" size={24} color="#666" style={styles.cardIcon} />
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardValue}>
+                        {asset.odometer ? `${asset.odometer.toLocaleString()} mi` : 'N/A'}
+                      </Text>
+                      <Text style={styles.cardLabel}>Odometer</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Second Row - VIN and Color */}
+              <View style={styles.cardRow}>
+                <View style={styles.card}>
+                  <View style={styles.cardContent}>
+                    <Ionicons name="barcode-outline" size={24} color="#666" style={styles.cardIcon} />
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardValue} numberOfLines={1}>
+                        {asset.vin || 'N/A'}
+                      </Text>
+                      <Text style={styles.cardLabel}>VIN Number</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.cardContent}>
+                    <Ionicons name="color-palette-outline" size={24} color="#666" style={styles.cardIcon} />
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardValue}>
+                        {asset.color || 'N/A'}
+                      </Text>
+                      <Text style={styles.cardLabel}>Color</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Third Row - Make and Model */}
+              <View style={styles.cardRow}>
+                <View style={styles.card}>
+                  <View style={styles.cardContent}>
+                    <Ionicons name="car-outline" size={24} color="#666" style={styles.cardIcon} />
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardValue}>
+                        {asset.make || 'N/A'}
+                      </Text>
+                      <Text style={styles.cardLabel}>Make</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.cardContent}>
+                    <Ionicons name="car-sport-outline" size={24} color="#666" style={styles.cardIcon} />
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardValue}>
+                        {asset.model || 'N/A'}
+                      </Text>
+                      <Text style={styles.cardLabel}>Model</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Maintenance Card */}
+              <View style={styles.fullWidthCard}>
+                <View style={styles.cardContent}>
+                  <Ionicons name="construct-outline" size={24} color="#666" style={styles.cardIcon} />
+                  <View style={styles.cardTextContainer}>
+                    <Text style={styles.cardValue}>Maintenance</Text>
+                    <Text style={[styles.cardLabel, styles.statusText]}>No Issues Reported</Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color="#999" />
+                </View>
+              </View>
+
+              {/* Inspection Card */}
+              <View style={styles.fullWidthCard}>
+                <View style={styles.cardContent}>
+                  <Ionicons name="checkmark-circle" size={24} color="#4CAF50" style={styles.cardIcon} />
+                  <View style={styles.cardTextContainer}>
+                    <Text style={styles.cardValue}>Inspection</Text>
+                    <Text style={[styles.cardLabel, styles.statusText]}>Completed</Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color="#999" />
+                </View>
               </View>
             </ScrollView>
 
@@ -233,8 +272,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
@@ -243,17 +282,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
+  headerTextContainer: {
+    flex: 1,
+  },
+  vehicleName: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#333',
+    marginBottom: 4,
+  },
+  vehicleInfo: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '400',
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: 18,
     backgroundColor: '#f0f0f0',
   },
   content: {
@@ -261,24 +309,69 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
+    paddingBottom: 100,
   },
-  detailsContainer: {
-    gap: 24,
+  cardRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
   },
-  detailRow: {
+  card: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  fullWidthCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardIcon: {
+    marginRight: 12,
+  },
+  cardTextContainer: {
+    flex: 1,
+  },
+  cardValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 4,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
+  cardLabel: {
+    fontSize: 13,
     color: '#666',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontWeight: '400',
   },
-  value: {
-    fontSize: 18,
-    color: '#000',
+  statusText: {
+    color: '#4CAF50',
     fontWeight: '500',
   },
   footer: {

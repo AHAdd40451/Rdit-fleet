@@ -189,18 +189,25 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       animationType="fade"
       onRequestClose={handleClose}
     >
-      <TouchableWithoutFeedback onPress={handleClose}>
-        <View style={styles.overlay}>
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.modalContainer}
-            >
-              <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.modalContent}>
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback onPress={handleClose}>
+          <View style={styles.backdrop} />
+        </TouchableWithoutFeedback>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+          pointerEvents="box-none"
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
+            scrollEnabled={true}
+            bounces={false}
+            alwaysBounceVertical={false}
+          >
+            <View style={styles.modalContent}>
                   <View style={styles.header}>
                     <Text style={styles.modalTitle}>
                       {editingAsset ? 'Edit Asset' : 'Create New Asset'}
@@ -386,11 +393,9 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                     </View>
                   </View>
                 </View>
-              </ScrollView>
-            </KeyboardAvoidingView>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
@@ -403,10 +408,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   modalContainer: {
     width: '100%',
     maxWidth: 500,
     maxHeight: '90%',
+    pointerEvents: 'box-none',
   },
   scrollContent: {
     flexGrow: 1,
