@@ -102,6 +102,11 @@ export default function AssetsScreen() {
     setLoading(true);
 
     try {
+      // Only admins can create or update assets
+      if (userProfile?.role !== 'admin') {
+        throw new Error('You do not have permission to create or update assets.');
+      }
+
       // Assets table uses UUID (from Supabase auth session.user.id)
       // Must use UUID, not numeric userProfile.id
       const currentUserId = session?.user?.id;
@@ -111,7 +116,7 @@ export default function AssetsScreen() {
       }
 
       if (editingAsset) {
-        // Update existing asset
+        // Update existing asset - only admins can do this
         const { error: updateError } = await supabase
           .from('assets')
           .update(assetData)
@@ -207,6 +212,11 @@ export default function AssetsScreen() {
   };
 
   const handleEditAsset = (asset: Asset) => {
+    // Only admins can edit assets
+    if (userProfile?.role !== 'admin') {
+      showToast('You do not have permission to edit assets.', 'error');
+      return;
+    }
     setEditingAsset(asset);
     setShowAssetModal(true);
   };
@@ -293,7 +303,7 @@ export default function AssetsScreen() {
             </View>
             <AssetsTable
               key={refreshAssetsTable}
-              onEditAsset={handleEditAsset}
+              onEditAsset={userProfile?.role === 'admin' ? handleEditAsset : undefined}
               onAssetClick={handleAssetClick}
             />
           </View>
@@ -311,7 +321,7 @@ export default function AssetsScreen() {
         visible={showBottomSheet}
         asset={selectedAsset}
         onClose={handleCloseBottomSheet}
-        onEdit={handleEditAsset}
+        onEdit={userProfile?.role === 'admin' ? handleEditAsset : undefined}
       />
     </SafeAreaView>
   );

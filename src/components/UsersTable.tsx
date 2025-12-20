@@ -110,8 +110,8 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <LoadingBar variant="bar" />
-        <Text style={styles.loadingText}>Loading users...</Text>
+        <LoadingBar variant="spinner" />
+        <Text style={styles.loadingText}>Loading user</Text>
       </View>
     );
   }
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
+    color: '#14AB98',
   },
   errorContainer: {
     padding: 20,

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { LoadingBar } from './LoadingBar';
 import { useToast } from './Toast';
@@ -176,8 +177,8 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <LoadingBar variant="bar" />
-        <Text style={styles.loadingText}>Loading assets...</Text>
+        <LoadingBar variant="spinner" />
+        <Text style={styles.loadingText}>Loading asset</Text>
       </View>
     );
   }
@@ -273,30 +274,37 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
                   </Text>
                 </View>
                 <View style={[styles.cell, styles.actionsCell]}>
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleEdit(asset);
-                      }}
-                      style={[styles.actionButton, styles.editButton]}
-                      disabled={deletingAssetId === asset.id}
-                    >
-                      <Text style={styles.editButtonText}>Edit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDelete(asset);
-                      }}
-                      style={[styles.actionButton, styles.deleteButton]}
-                      disabled={deletingAssetId === asset.id}
-                    >
-                      <Text style={styles.deleteButtonText}>
-                        {deletingAssetId === asset.id ? '...' : 'Delete'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  {userProfile?.role === 'admin' && (
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleEdit(asset);
+                        }}
+                        style={[styles.actionButton, styles.editButton]}
+                        disabled={deletingAssetId === asset.id}
+                      >
+                        <Text style={styles.editButtonText}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDelete(asset);
+                        }}
+                        style={[styles.actionButton, styles.deleteButton]}
+                        disabled={deletingAssetId === asset.id}
+                      >
+                        <Text style={styles.deleteButtonText}>
+                          {deletingAssetId === asset.id ? '...' : 'Delete'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {userProfile?.role !== 'admin' && (
+                    <View style={styles.viewOnlyContainer}>
+                      <Ionicons name="eye-outline" size={20} color="#999" />
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             ))}
@@ -365,6 +373,10 @@ const styles = StyleSheet.create({
   actionsHeader: {
     width: 200,
     textAlign: 'center',
+  },
+  viewOnlyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     maxHeight: 400,
@@ -450,7 +462,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
+    color: '#14AB98',
   },
   errorContainer: {
     padding: 20,
