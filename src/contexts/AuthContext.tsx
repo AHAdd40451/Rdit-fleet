@@ -13,6 +13,7 @@ interface UserProfile {
   first_name?: string;
   last_name?: string;
   userId?: string; // UUID of the user/admin who created this user
+  avatar_url?: string; // URL of the profile image
 }
 
 interface AuthContextType {
@@ -36,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       let query = supabase
         .from('users')
-        .select('id, email, phone_no, role, first_name, last_name, userId');
+        .select('id, email, phone_no, role, first_name, last_name, userId, avatar_url');
       
       if (isPhone) {
         query = query.eq('phone_no', userId);

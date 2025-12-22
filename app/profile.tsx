@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,6 +51,12 @@ export default function ProfileScreen() {
       const phone = userProfile.phone_no || '';
       setPhoneNumber(phone);
       setFormattedPhoneNumber(phone);
+      // Load profile image URL if it exists, otherwise reset to null
+      if (userProfile.avatar_url && userProfile.avatar_url.trim() !== '') {
+        setProfileImageUri(userProfile.avatar_url);
+      } else {
+        setProfileImageUri(null);
+      }
     }
   }, [userProfile]);
 
@@ -116,7 +123,7 @@ export default function ProfileScreen() {
       // Fetch updated profile from database
       const { data: updatedProfile, error: fetchError } = await supabase
         .from('users')
-        .select('id, email, phone_no, role, first_name, last_name, userId')
+        .select('id, email, phone_no, role, first_name, last_name, userId, avatar_url')
         .eq('id', userProfile.id)
         .single();
 
@@ -163,36 +170,138 @@ export default function ProfileScreen() {
       setIsEditing(false);
   };
 
+  const uploadProfileImage = async (uri: string) => {
+    try {
+      if (!userProfile?.id) throw new Error('User profile not found');
+  
+      // Ensure we have a valid session for storage operations
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // If no session exists and user is phone-based, we need to handle RLS differently
+      // For now, try to upload - RLS policies should allow authenticated users
+      if (!currentSession && !session) {
+        console.warn('No Supabase session found. Storage upload may fail due to RLS policies.');
+      }
+  
+      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${userProfile.id}-${Date.now()}.${fileExt}`;
+      const filePath = `profiles/${fileName}`;
+      
+      // Determine content type based on file extension
+      const contentTypeMap: { [key: string]: string } = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        gif: 'image/gif',
+        webp: 'image/webp',
+      };
+      const contentType = contentTypeMap[fileExt] || 'image/jpeg';
+  
+      // React Native compatible: Use expo-file-system to read local file
+      // Read file as base64 string
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+      
+      // Convert base64 to ArrayBuffer
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const arrayBuffer = bytes.buffer;
+  
+      const { error, data: uploadData } = await supabase.storage
+        .from('redi-fleet')
+        .upload(filePath, arrayBuffer, {
+          contentType: contentType,
+          upsert: true,
+          cacheControl: '3600',
+        });
+  
+      if (error) {
+        console.error('Supabase upload error:', error);
+        
+        // Provide helpful error message for RLS issues
+        if (error.message?.includes('row-level security') || error.message?.includes('RLS')) {
+          throw new Error(
+            'Storage upload failed: Permission denied. Please ensure your Supabase storage bucket has RLS policies that allow authenticated users to upload files to the profiles/ folder.'
+          );
+        }
+        throw error;
+      }
+  
+      const { data: urlData } = supabase.storage
+        .from('redi-fleet')
+        .getPublicUrl(filePath);
+  
+      return urlData.publicUrl;
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      throw err;
+    }
+  };
+  
+  
+
   const handleSelectImage = async () => {
     try {
-      // Request media library permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Media library permission is required to select photos.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Permission required', 'Allow photo access');
         return;
       }
-
-      // Launch image library
+  
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
+  
+      if (result.canceled) return;
+  
+      const imageUri = result.assets[0].uri;
+  
+      setLoading(true);
+  
+      // 1. Upload to Supabase bucket
+      const publicUrl = await uploadProfileImage(imageUri);
+  
+      // 2. Save URL in users table
+      const { error } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', userProfile?.id);
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setProfileImageUri(result.assets[0].uri);
+      if (error) throw error;
+
+      // 3. If user is phone-based, update AsyncStorage with fresh data
+      if (userProfile?.phone_no && !session?.user?.email) {
+        const { data: updatedProfile } = await supabase
+          .from('users')
+          .select('id, email, phone_no, role, first_name, last_name, userId, avatar_url')
+          .eq('id', userProfile.id)
+          .single();
+        
+        if (updatedProfile) {
+          await AsyncStorage.setItem('phone_user', JSON.stringify(updatedProfile));
+        }
       }
+
+      // 4. Update UI
+      setProfileImageUri(publicUrl);
+      await refreshUserProfile();
+  
+      showToast('Profile image updated', 'success');
     } catch (error) {
-      console.error('Error selecting image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
+      console.error(error);
+      Alert.alert('Error', 'Image upload failed');
+    } finally {
+      setLoading(false);
     }
   };
+  
 
   // Prepare data for FlatList
   const renderContent = () => (
@@ -214,15 +323,21 @@ export default function ProfileScreen() {
         <View style={profileStyles.avatarContainer}>
           <TouchableOpacity onPress={handleSelectImage} activeOpacity={0.7}>
             <View style={profileStyles.avatar}>
-              {profileImageUri ? (
+              {profileImageUri && profileImageUri.trim() !== '' ? (
                 <Image
                   source={{ uri: profileImageUri }}
                   style={profileStyles.avatarImage}
+                  onError={(error) => {
+                    console.error('Image load error:', error);
+                    // Fallback to initials if image fails to load
+                    setProfileImageUri(null);
+                  }}
+                  resizeMode="cover"
                 />
               ) : (
                 <Text style={profileStyles.avatarText}>
-                  {firstName.charAt(0).toUpperCase()}
-                  {lastName.charAt(0).toUpperCase()}
+                  {firstName && firstName.length > 0 ? firstName.charAt(0).toUpperCase() : ''}
+                  {lastName && lastName.length > 0 ? lastName.charAt(0).toUpperCase() : ''}
                 </Text>
               )}
             </View>
