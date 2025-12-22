@@ -75,6 +75,11 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
     return currentSegment === routeName || segments.some(seg => seg === routeName);
   };
 
+  // Only show bottom nav for admin users
+  if (userProfile?.role !== 'admin') {
+    return null;
+  }
+
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.navBar}>
@@ -135,16 +140,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Profile/Person Icon */}
+        {/* Settings Icon */}
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => handleNavigation('/profile')}
+          onPress={() => handleNavigation('/settings')}
           activeOpacity={0.7}
         >
           <Ionicons
-            name={isActive('/profile') ? 'person' : 'person-outline'}
+            name={isActive('/settings') ? 'settings' : 'settings-outline'}
             size={24}
-            color={isActive('/profile') ? THEME_COLOR : '#666'}
+            color={isActive('/settings') ? THEME_COLOR : '#666'}
           />
         </TouchableOpacity>
       </View>
