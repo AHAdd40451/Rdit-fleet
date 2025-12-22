@@ -96,6 +96,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
             size={24}
             color={isActive('/home') ? THEME_COLOR : '#666'}
           />
+          <Text style={[styles.label, { color: isActive('/home') ? THEME_COLOR : '#666' }]}>
+            Home
+          </Text>
         </TouchableOpacity>
 
         {/* Truck Icon */}
@@ -109,6 +112,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
             size={24}
             color={isActive('/assets') ? THEME_COLOR : '#666'}
           />
+          <Text style={[styles.label, { color: isActive('/assets') ? THEME_COLOR : '#666' }]}>
+            Assets
+          </Text>
         </TouchableOpacity>
 
         {/* Central Plus Button */}
@@ -140,6 +146,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
               </View>
             )}
           </View>
+          <Text style={[styles.label, { color: isActive('/notifications') ? THEME_COLOR : '#666' }]}>
+            Notification
+          </Text>
         </TouchableOpacity>
 
         {/* Profile Icon - Only show for non-admin users */}
@@ -154,6 +163,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
               size={24}
               color={isActive('/profile') ? THEME_COLOR : '#666'}
             />
+            <Text style={[styles.label, { color: isActive('/profile') ? THEME_COLOR : '#666' }]}>
+              Profile
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -169,6 +181,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
               size={24}
               color={isActive('/settings') ? THEME_COLOR : '#666'}
             />
+            <Text style={[styles.label, { color: isActive('/settings') ? THEME_COLOR : '#666' }]}>
+              Settings
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -191,10 +206,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     backgroundColor: '#FFFFFF',
     // paddingHorizontal: 20,
-    paddingVertical: 0,
+    paddingVertical: 4,
     // paddingBottom: 20,
     width: '100%',
-    height: 50,
+    height: 70,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
     // shadowColor: '#000',
@@ -210,7 +225,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
+  },
+  label: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
   },
   plusButton: {
     width: 56,

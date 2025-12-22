@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isSigningOutRef = useRef(false);
 
   const fetchUserProfile = async (userId: string, isPhone: boolean = false) => {
     try {
@@ -149,6 +150,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Don't reload phone users if we're in the process of signing out
+      if (isSigningOutRef.current) {
+        return;
+      }
+      
       if (session?.user?.email) {
         setSession(session);
         setUser(session.user);
@@ -169,12 +175,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    // Clear phone user data
-    await AsyncStorage.removeItem('phone_user');
-    setSession(null);
-    setUser(null);
-    setUserProfile(null);
+    try {
+      // Set signing out flag to prevent reloading phone users
+      isSigningOutRef.current = true;
+      // Clear phone user data first
+      await AsyncStorage.removeItem('phone_user');
+      // Clear all state immediately
+      setSession(null);
+      setUser(null);
+      setUserProfile(null);
+      // Sign out from Supabase (this will trigger onAuthStateChange, but we've set the flag)
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Even if there's an error, clear local state
+      setSession(null);
+      setUser(null);
+      setUserProfile(null);
+    } finally {
+      // Reset the flag after a short delay to allow state to settle
+      setTimeout(() => {
+        isSigningOutRef.current = false;
+      }, 100);
+    }
   };
 
   return (
