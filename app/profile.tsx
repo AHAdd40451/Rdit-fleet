@@ -3,13 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  SafeAreaView,
+  FlatList,
   TouchableOpacity,
   Image,
   KeyboardAvoidingView,
   Platform,
+  LogBox,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import PhoneInput from 'react-native-phone-number-input';
 import { Button } from '../src/components/Button';
@@ -20,6 +21,13 @@ import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Suppress VirtualizedList warning from react-native-phone-number-input
+// This warning occurs because PhoneInput uses a VirtualizedList internally for country selection
+LogBox.ignoreLogs([
+  'VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead.',
+  /VirtualizedLists should never be nested/,
+]);
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -160,9 +168,143 @@ export default function ProfileScreen() {
       setIsEditing(false);
   };
 
+  // Prepare data for FlatList
+  const renderContent = () => (
+    <>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      {/* Profile Section */}
+      <View style={styles.profileSection}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {firstName.charAt(0).toUpperCase()}
+              {lastName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.profileName}>
+          {firstName} {lastName}
+        </Text>
+        <Text style={styles.profileRole}>
+          {userProfile?.role === 'admin' ? 'Administrator' : 'User'}
+        </Text>
+      </View>
+
+      {/* Edit Button */}
+      {!isEditing && (
+        <View style={styles.editButtonContainer}>
+          <Button
+            variant="gradient"
+            title="Edit Profile"
+            onPress={() => setIsEditing(true)}
+            style={styles.editButton}
+          />
+        </View>
+      )}
+
+      {/* Form Section */}
+      <View style={styles.formSection}>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>First Name</Text>
+          <Input
+            placeholder="First Name"
+            value={firstName}
+            onChangeText={setFirstName}
+            editable={isEditing}
+            style={styles.input}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Last Name</Text>
+          <Input
+            placeholder="Last Name"
+            value={lastName}
+            onChangeText={setLastName}
+            editable={isEditing}
+            style={styles.input}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Email</Text>
+          <Input
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            editable={isEditing}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={styles.input}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Phone Number</Text>
+          <View style={styles.phoneInputWrapper}>
+            <PhoneInput
+              ref={phoneInput}
+              defaultValue={phoneNumber}
+              defaultCode="US"
+              layout="first"
+              onChangeText={(text) => {
+                setPhoneNumber(text);
+              }}
+              onChangeFormattedText={(text) => {
+                setFormattedPhoneNumber(text);
+              }}
+              withDarkTheme={false}
+              withShadow={false}
+              autoFocus={false}
+              disabled={!isEditing}
+              containerStyle={styles.phoneInput}
+              textContainerStyle={styles.phoneInputTextContainer}
+              textInputStyle={styles.phoneInputText}
+              codeTextStyle={styles.phoneInputCodeText}
+            />
+          </View>
+        </View>
+
+        {/* Save/Cancel Buttons */}
+        {isEditing && (
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              onPress={handleCancelEdit}
+              style={styles.cancelButton}
+              disabled={loading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <View style={styles.saveButtonContainer}>
+              <Button
+                variant="gradient"
+                title={loading ? 'Saving...' : 'Save Changes'}
+                onPress={handleUpdateProfile}
+                style={styles.saveButton}
+                disabled={loading}
+              />
+            </View>
+          </View>
+        )}
+      </View>
+    </>
+  );
+
   if (!userProfile) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.loadingContainer}>
           <LoadingBar variant="bar" />
         </View>
@@ -171,144 +313,20 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
+        <FlatList
+          data={[{ key: 'content' }]}
+          renderItem={() => renderContent()}
+          keyExtractor={() => 'profile-content'}
           showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Profile</Text>
-            <View style={styles.placeholder} />
-          </View>
-
-          {/* Profile Section */}
-          <View style={styles.profileSection}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {firstName.charAt(0).toUpperCase()}
-                  {lastName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.profileName}>
-              {firstName} {lastName}
-            </Text>
-            <Text style={styles.profileRole}>
-              {userProfile.role === 'admin' ? 'Administrator' : 'User'}
-            </Text>
-          </View>
-
-          {/* Edit Button */}
-          {!isEditing && (
-            <View style={styles.editButtonContainer}>
-              <Button
-                variant="gradient"
-                title="Edit Profile"
-                onPress={() => setIsEditing(true)}
-                style={styles.editButton}
-              />
-            </View>
-          )}
-
-          {/* Form Section */}
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>First Name</Text>
-              <Input
-                placeholder="First Name"
-                value={firstName}
-                onChangeText={setFirstName}
-                editable={isEditing}
-                style={styles.input}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Last Name</Text>
-              <Input
-                placeholder="Last Name"
-                value={lastName}
-                onChangeText={setLastName}
-                editable={isEditing}
-                style={styles.input}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <Input
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                editable={isEditing}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.input}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Phone Number</Text>
-              <View style={styles.phoneInputWrapper}>
-                <PhoneInput
-                  ref={phoneInput}
-                  defaultValue={phoneNumber}
-                  defaultCode="US"
-                  layout="first"
-                  onChangeText={(text) => {
-                    setPhoneNumber(text);
-                  }}
-                  onChangeFormattedText={(text) => {
-                    setFormattedPhoneNumber(text);
-                  }}
-                  withDarkTheme={false}
-                  withShadow={false}
-                  autoFocus={false}
-                  disabled={!isEditing}
-                  containerStyle={styles.phoneInput}
-                  textContainerStyle={styles.phoneInputTextContainer}
-                  textInputStyle={styles.phoneInputText}
-                  codeTextStyle={styles.phoneInputCodeText}
-                />
-              </View>
-            </View>
-
-            {/* Save/Cancel Buttons */}
-            {isEditing && (
-              <View style={styles.buttonGroup}>
-                <TouchableOpacity
-                  onPress={handleCancelEdit}
-                  style={styles.cancelButton}
-                  disabled={loading}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <View style={styles.saveButtonContainer}>
-                  <Button
-                    variant="gradient"
-                    title={loading ? 'Saving...' : 'Save Changes'}
-                    onPress={handleUpdateProfile}
-                    style={styles.saveButton}
-                    disabled={loading}
-                  />
-                </View>
-              </View>
-            )}
-          </View>
-        </ScrollView>
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          ListFooterComponent={<View style={{ height: 100 }} />}
+        />
       </KeyboardAvoidingView>
       <BottomNavBar />
     </SafeAreaView>

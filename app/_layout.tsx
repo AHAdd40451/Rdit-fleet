@@ -6,6 +6,14 @@ import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { ConfirmationModalProvider } from '../src/contexts/ConfirmationModalContext';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
+import { LogBox } from 'react-native';
+
+// Suppress VirtualizedList warning from react-native-phone-number-input
+// This warning occurs because PhoneInput uses a VirtualizedList internally for country selection
+LogBox.ignoreLogs([
+  'VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead.',
+  /VirtualizedLists should never be nested/,
+]);
 
 function RootLayoutNav() {
   const { session, userProfile, loading } = useAuth();
