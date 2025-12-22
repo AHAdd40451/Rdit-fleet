@@ -9,9 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   LogBox,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import PhoneInput from 'react-native-phone-number-input';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -22,14 +25,6 @@ import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import profileStyles from './profileStyles';
-
-// Suppress VirtualizedList warning from react-native-phone-number-input
-// This warning occurs because PhoneInput uses a VirtualizedList internally for country selection
-LogBox.ignoreLogs([
-  'VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead.',
-  /VirtualizedLists should never be nested/,
-]);
-
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -43,6 +38,7 @@ export default function ProfileScreen() {
   const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
   const phoneInput = useRef<PhoneInput>(null);
 
   // Load user profile data into form
@@ -167,6 +163,37 @@ export default function ProfileScreen() {
       setIsEditing(false);
   };
 
+  const handleSelectImage = async () => {
+    try {
+      // Request media library permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Media library permission is required to select photos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Launch image library
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setProfileImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error selecting image:', error);
+      Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
+  };
+
   // Prepare data for FlatList
   const renderContent = () => (
     <>
@@ -185,12 +212,24 @@ export default function ProfileScreen() {
       {/* Profile Section */}
       <View style={profileStyles.profileSection}>
         <View style={profileStyles.avatarContainer}>
-          <View style={profileStyles.avatar}>
-            <Text style={profileStyles.avatarText}>
-              {firstName.charAt(0).toUpperCase()}
-              {lastName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <TouchableOpacity onPress={handleSelectImage} activeOpacity={0.7}>
+            <View style={profileStyles.avatar}>
+              {profileImageUri ? (
+                <Image
+                  source={{ uri: profileImageUri }}
+                  style={profileStyles.avatarImage}
+                />
+              ) : (
+                <Text style={profileStyles.avatarText}>
+                  {firstName.charAt(0).toUpperCase()}
+                  {lastName.charAt(0).toUpperCase()}
+                </Text>
+              )}
+            </View>
+            <View style={profileStyles.cameraIconContainer}>
+              <Ionicons name="camera" size={18} color="#fff" />
+            </View>
+          </TouchableOpacity>
         </View>
         <Text style={profileStyles.profileName}>
           {firstName} {lastName}

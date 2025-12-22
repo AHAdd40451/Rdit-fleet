@@ -51,6 +51,7 @@ const profileStyles = StyleSheet.create({
     },
     avatarContainer: {
       marginBottom: 16,
+      position: 'relative',
     },
     avatar: {
       width: 100,
@@ -64,11 +65,35 @@ const profileStyles = StyleSheet.create({
       shadowOpacity: 0.2,
       shadowRadius: 4,
       elevation: 4,
+      overflow: 'hidden',
+    },
+    avatarImage: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
     },
     avatarText: {
       fontSize: 36,
       fontWeight: 'bold',
       color: '#fff',
+    },
+    cameraIconContainer: {
+      position: 'absolute',
+      bottom: 2,
+      right: 2,
+      backgroundColor: TEAL_GREEN,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2.5,
+      borderColor: '#fff',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3,
+      elevation: 4,
     },
     profileName: {
       fontSize: 24,
