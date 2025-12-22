@@ -64,29 +64,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const phoneUserData = await AsyncStorage.getItem('phone_user');
       if (phoneUserData) {
         const userData = JSON.parse(phoneUserData);
-        // If userId is missing, fetch it from the database
-        if (!userData.userId && (userData.id || userData.phone_no || userData.email)) {
-          let query = supabase.from('users').select('userId');
-          if (userData.id) {
-            query = query.eq('id', userData.id);
-          } else if (userData.phone_no) {
-            query = query.eq('phone_no', userData.phone_no);
-          } else if (userData.email) {
-            query = query.eq('email', userData.email);
-          }
-          const { data: userProfileData } = await query.single();
-          if (userProfileData?.userId) {
-            userData.userId = userProfileData.userId;
-            // Update AsyncStorage with userId
-            await AsyncStorage.setItem('phone_user', JSON.stringify(userData));
-          }
+        // Always fetch fresh data from database to get latest profile including avatar_url
+        let query = supabase
+          .from('users')
+          .select('id, email, phone_no, role, first_name, last_name, userId, avatar_url');
+        
+        if (userData.id) {
+          query = query.eq('id', userData.id);
+        } else if (userData.phone_no) {
+          query = query.eq('phone_no', userData.phone_no);
+        } else if (userData.email) {
+          query = query.eq('email', userData.email);
+        } else {
+          // If no identifier, use stored data as fallback
+          setUserProfile(userData);
+          setSession({} as Session);
+          setUser({} as User);
+          return true;
         }
-        setUserProfile(userData);
-        // Create a mock session object for phone users
-        // This allows the app to treat phone users as authenticated
-        setSession({} as Session);
-        setUser({} as User);
-        return true;
+        
+        const { data: freshProfile, error } = await query.single();
+        
+        if (error) {
+          console.error('Error fetching fresh profile:', error);
+          // Fallback to AsyncStorage data if fetch fails
+          setUserProfile(userData);
+          setSession({} as Session);
+          setUser({} as User);
+          return true;
+        }
+        
+        if (freshProfile) {
+          // Update AsyncStorage with fresh data including avatar_url
+          await AsyncStorage.setItem('phone_user', JSON.stringify(freshProfile));
+          setUserProfile(freshProfile as UserProfile);
+          // Create a mock session object for phone users
+          setSession({} as Session);
+          setUser({} as User);
+          return true;
+        }
       }
       return false;
     } catch (error) {
@@ -100,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await fetchUserProfile(user.email);
       setUserProfile(profile);
     } else if (userProfile?.phone_no) {
-      // Refresh phone-based user from AsyncStorage
+      // Refresh phone-based user from database (loadPhoneUser now fetches fresh data)
       await loadPhoneUser();
     } else {
       // Check for phone-based user

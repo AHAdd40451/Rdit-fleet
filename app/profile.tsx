@@ -51,6 +51,7 @@ export default function ProfileScreen() {
       const phone = userProfile.phone_no || '';
       setPhoneNumber(phone);
       setFormattedPhoneNumber(phone);
+      console.log('userProfile.avatar_url', userProfile);
       // Load profile image URL if it exists, otherwise reset to null
       if (userProfile.avatar_url && userProfile.avatar_url.trim() !== '') {
         setProfileImageUri(userProfile.avatar_url);
@@ -274,7 +275,7 @@ export default function ProfileScreen() {
         .update({ avatar_url: publicUrl })
         .eq('id', userProfile?.id);
 
-      if (error) throw error;
+      if (error) throw error;  
 
       // 3. If user is phone-based, update AsyncStorage with fresh data
       if (userProfile?.phone_no && !session?.user?.email) {
