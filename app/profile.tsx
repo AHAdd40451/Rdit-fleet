@@ -20,6 +20,7 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BottomNavBar } from '../src/components/BottomNavBar';
 
 // Suppress VirtualizedList warning from react-native-phone-number-input
 // This warning occurs because PhoneInput uses a VirtualizedList internally for country selection
@@ -327,6 +328,7 @@ export default function ProfileScreen() {
           ListFooterComponent={<View style={{ height: 100 }} />}
         />
       </KeyboardAvoidingView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }

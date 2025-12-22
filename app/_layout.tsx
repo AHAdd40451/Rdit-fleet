@@ -63,10 +63,11 @@ function RootLayoutNav() {
 
     const isAssetsRoute = currentRoute === 'assets';
     const isProfileRoute = currentRoute === 'profile';
+    const isSettingsRoute = currentRoute === 'settings';
 
     if (!isAuthenticated) {
       // User is not signed in
-      if (isDashboardRoute || isCompanyRoute || isAssetsRoute || isProfileRoute) {
+      if (isDashboardRoute || isCompanyRoute || isAssetsRoute || isProfileRoute || isSettingsRoute) {
         // Trying to access protected route, redirect to login
         router.replace('/');
       }
@@ -91,6 +92,15 @@ function RootLayoutNav() {
           router.replace('/adminDashboard');
         } else if (userProfile.role === 'user' && currentRoute !== 'userDashboard' && currentRoute !== 'home') {
           router.replace('/userDashboard');
+        }
+      } else if (isSettingsRoute && userProfile) {
+        // Redirect non-admin users away from settings page
+        if (userProfile.role !== 'admin') {
+          if (userProfile.role === 'user') {
+            router.replace('/userDashboard');
+          } else {
+            router.replace('/');
+          }
         }
       }
     }

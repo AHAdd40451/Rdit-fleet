@@ -75,10 +75,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
     return currentSegment === routeName || segments.some(seg => seg === routeName);
   };
 
-  // Only show bottom nav for admin users
-  if (userProfile?.role !== 'admin') {
+  // Show bottom nav for all authenticated users
+  if (!userProfile) {
     return null;
   }
+
+  const isAdmin = userProfile.role === 'admin';
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -140,18 +142,35 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Settings Icon */}
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => handleNavigation('/settings')}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isActive('/settings') ? 'settings' : 'settings-outline'}
-            size={24}
-            color={isActive('/settings') ? THEME_COLOR : '#666'}
-          />
-        </TouchableOpacity>
+        {/* Profile Icon - Only show for non-admin users */}
+        {!isAdmin && (
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => handleNavigation('/profile')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isActive('/profile') ? 'person' : 'person-outline'}
+              size={24}
+              color={isActive('/profile') ? THEME_COLOR : '#666'}
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* Settings Icon - Only show for admin users */}
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => handleNavigation('/settings')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isActive('/settings') ? 'settings' : 'settings-outline'}
+              size={24}
+              color={isActive('/settings') ? THEME_COLOR : '#666'}
+            />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
