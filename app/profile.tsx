@@ -25,6 +25,7 @@ import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNavBar } from '../src/components/BottomNavBar';
+import { TopBar } from '../src/components/TopBar';
 import profileStyles from './profileStyles';
 
 export default function ProfileScreen() {
@@ -308,16 +309,10 @@ export default function ProfileScreen() {
   const renderContent = () => (
     <>
       {/* Header */}
-      <View style={profileStyles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={profileStyles.backButton}
-        >
-          <Text style={profileStyles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={profileStyles.headerTitle}>Profile</Text>
-        <View style={profileStyles.placeholder} />
-      </View>
+      <TopBar
+        title="Profile"
+        showBack={true}
+      />
 
       {/* Profile Section */}
       <View style={profileStyles.profileSection}>

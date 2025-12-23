@@ -4,32 +4,30 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { useAuth } from '../src/contexts/AuthContext';
-import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import { UsersTable } from '../src/components/UsersTable';
 import { UserModal } from '../src/components/UserModal';
+import { Sidebar } from '../src/components/Sidebar';
+import { TopBar } from '../src/components/TopBar';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
-  const { signOut, userProfile, user, session } = useAuth();
+  const { userProfile, user, session } = useAuth();
   const { showToast } = useToast();
-  const { showConfirmation } = useConfirmationModal();
   
   // Modal and user management state
   const [showUserModal, setShowUserModal] = useState(false);
@@ -37,6 +35,7 @@ export default function AdminDashboardScreen() {
   const [loading, setLoading] = useState(false);
   const [checkingCompany, setCheckingCompany] = useState(true);
   const [refreshUsersTable, setRefreshUsersTable] = useState(0);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   // Check if company exists for admin user
   useEffect(() => {
@@ -68,19 +67,6 @@ export default function AdminDashboardScreen() {
 
     checkCompany();
   }, [session, userProfile, router]);
-
-  const handleLogout = () => {
-    showConfirmation({
-      title: 'Logout',
-      message: 'Are you sure you want to logout?',
-      confirmText: 'Logout',
-      cancelText: 'Cancel',
-      onConfirm: async () => {
-        await signOut();
-        router.replace('/');
-      },
-    });
-  };
 
   const handleSaveUser = async (userData: any) => {
     setLoading(true);
@@ -176,29 +162,22 @@ export default function AdminDashboardScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
+        {/* Header */}
+        <TopBar
+          title="Admin Dashboard"
+          showHamburger={true}
+          onHamburgerPress={() => setSidebarVisible(true)}
+        />
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../assets/logo.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Welcome Section */}
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeTitle}>Admin Dashboard</Text>
@@ -233,6 +212,7 @@ export default function AdminDashboardScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
       <BottomNavBar />
+      <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
       <UserModal
         visible={showUserModal}
         onClose={handleCloseModal}
@@ -254,30 +234,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  logoContainer: {
-    alignItems: 'center',
-  },
-  logoImage: {
-    width: 120,
-    height: 70,
-  },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  logoutText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
   },
   welcomeSection: {
     paddingHorizontal: 20,

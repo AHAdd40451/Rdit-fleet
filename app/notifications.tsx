@@ -4,17 +4,18 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
-  Image,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { supabase } from '../lib/supabase';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { BottomNavBar } from '../src/components/BottomNavBar';
+import { TopBar } from '../src/components/TopBar';
+import { Sidebar } from '../src/components/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
 
 const TEAL_GREEN = '#14AB98';
@@ -38,6 +39,7 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   const fetchNotifications = async () => {
     try {
@@ -152,7 +154,15 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* Header */}
+      <TopBar
+        title="Notifications"
+        showBack={false}
+        showHamburger={true}
+        onHamburgerPress={() => setSidebarVisible(true)}
+      />
+      
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -160,27 +170,12 @@ export default function NotificationsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/logo.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <View style={styles.titleRow}>
-            <Text style={styles.welcomeTitle}>Notifications</Text>
             {unreadCount > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
+                <Text style={styles.badgeText}>{unreadCount} unread</Text>
               </View>
             )}
           </View>
@@ -268,6 +263,7 @@ export default function NotificationsScreen() {
         </View>
       </ScrollView>
       <BottomNavBar />
+      <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -286,30 +282,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  logoContainer: {
-    alignItems: 'center',
-  },
-  logoImage: {
-    width: 120,
-    height: 70,
-  },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  logoutText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
   welcomeSection: {
     paddingHorizontal: 20,
     paddingVertical: 24,
@@ -319,18 +291,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-    marginRight: 12,
-  },
   badge: {
     backgroundColor: TEAL_GREEN,
     borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    paddingHorizontal: 8,
+    minWidth: 80,
+    height: 28,
+    paddingHorizontal: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },

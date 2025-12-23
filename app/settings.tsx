@@ -20,7 +20,9 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
+import { TopBar } from '../src/components/TopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Sidebar } from '../src/components/Sidebar';
 
 // Suppress VirtualizedList warning from react-native-phone-number-input
 LogBox.ignoreLogs([
@@ -55,6 +57,7 @@ export default function SettingsScreen() {
   const [companyLoading, setCompanyLoading] = useState(false);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const [loadingCompanyData, setLoadingCompanyData] = useState(true);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   // Load user profile data
   useEffect(() => {
@@ -569,16 +572,12 @@ export default function SettingsScreen() {
         style={styles.keyboardView}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <View style={styles.placeholder} />
-        </View>
+        <TopBar
+        title="Setting"
+        showBack={false}
+        showHamburger={true}
+        onHamburgerPress={() => setSidebarVisible(true)}
+      />
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
@@ -616,6 +615,7 @@ export default function SettingsScreen() {
         {activeTab === 'profile' ? renderProfileTab() : renderCompanyTab()}
       </KeyboardAvoidingView>
       <BottomNavBar />
+      <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -636,31 +636,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: TEAL_GREEN,
-    fontWeight: '500',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  placeholder: {
-    width: 60,
   },
   tabsContainer: {
     flexDirection: 'row',

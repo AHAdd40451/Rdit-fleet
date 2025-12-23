@@ -1,39 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  TouchableOpacity,
-  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { useAuth } from '../src/contexts/AuthContext';
-import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { BottomNavBar } from '../src/components/BottomNavBar';
+import { Sidebar } from '../src/components/Sidebar';
+import { TopBar } from '../src/components/TopBar';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
 
 export default function UserDashboardScreen() {
   const router = useRouter();
-  const { signOut, userProfile } = useAuth();
-  const { showConfirmation } = useConfirmationModal();
-
-  const handleLogout = () => {
-    showConfirmation({
-      title: 'Logout',
-      message: 'Are you sure you want to logout?',
-      confirmText: 'Logout',
-      cancelText: 'Cancel',
-      onConfirm: async () => {
-        await signOut();
-        router.replace('/');
-      },
-    });
-  };
+  const { userProfile } = useAuth();
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -42,18 +28,11 @@ export default function UserDashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/logo.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <TopBar
+          title="User Dashboard"
+          showHamburger={true}
+          onHamburgerPress={() => setSidebarVisible(true)}
+        />
 
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
@@ -72,6 +51,7 @@ export default function UserDashboardScreen() {
         </View>
       </ScrollView>
       <BottomNavBar />
+      <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -83,30 +63,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  logoContainer: {
-    alignItems: 'center',
-  },
-  logoImage: {
-    width: 120,
-    height: 70,
-  },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  logoutText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
   },
   welcomeSection: {
     paddingHorizontal: 20,

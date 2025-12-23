@@ -4,12 +4,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { LoadingBar } from '../src/components/LoadingBar';
@@ -21,6 +19,8 @@ import { BottomNavBar } from '../src/components/BottomNavBar';
 import { AssetsTable } from '../src/components/AssetsTable';
 import { AssetModal } from '../src/components/AssetModal';
 import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
+import { TopBar } from '../src/components/TopBar';
+import { Sidebar } from '../src/components/Sidebar';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -53,6 +53,7 @@ export default function AssetsScreen() {
   const [refreshAssetsTable, setRefreshAssetsTable] = useState(0);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
   // Check if company exists for admin user
   useEffect(() => {
@@ -250,29 +251,22 @@ export default function AssetsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
+        {/* Header */}
+        <TopBar
+          title="Assets"
+          showHamburger={true}
+          onHamburgerPress={() => setSidebarVisible(true)}
+        />
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../assets/logo.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Welcome Section */}
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeTitle}>Assets Management</Text>
@@ -310,6 +304,7 @@ export default function AssetsScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
       <BottomNavBar />
+      <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
       <AssetModal
         visible={showAssetModal}
         onClose={handleCloseModal}
@@ -337,30 +332,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  logoContainer: {
-    alignItems: 'center',
-  },
-  logoImage: {
-    width: 120,
-    height: 70,
-  },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  logoutText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
   },
   welcomeSection: {
     paddingHorizontal: 20,

@@ -7,7 +7,6 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
@@ -16,6 +15,7 @@ import { LoadingBar } from '../src/components/LoadingBar';
 import { useToast } from '../src/components/Toast';
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { TopBar } from '../src/components/TopBar';
 
 export default function CompanySetupScreen() {
   const router = useRouter();
@@ -147,15 +147,10 @@ export default function CompanySetupScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../assets/logo.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-          </View>
+          <TopBar
+            title="Company Setup"
+            showBack={true}
+          />
 
           {/* Welcome Section */}
           <View style={styles.welcomeSection}>
@@ -236,19 +231,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  logoContainer: {
-    alignItems: 'center',
-  },
-  logoImage: {
-    width: 260,
-    height: 160,
   },
   welcomeSection: {
     paddingHorizontal: 20,

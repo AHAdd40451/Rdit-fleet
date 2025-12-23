@@ -19,31 +19,6 @@ const profileStyles = StyleSheet.create({
       alignItems: 'center',
       padding: 20,
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 16,
-    },
-    backButton: {
-      paddingVertical: 8,
-      paddingHorizontal: 8,
-    },
-    backButtonText: {
-      fontSize: 16,
-      color: TEAL_GREEN,
-      fontWeight: '500',
-    },
-    headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: '#000',
-    },
-    placeholder: {
-      width: 60,
-    },
     profileSection: {
       alignItems: 'center',
       paddingVertical: 32,
