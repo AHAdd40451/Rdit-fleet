@@ -4,8 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { useAuth } from '../src/contexts/AuthContext';
@@ -22,18 +22,18 @@ export default function UserDashboardScreen() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* Header */}
+      <TopBar
+        title="User Dashboard"
+        showHamburger={true}
+        onHamburgerPress={() => setSidebarVisible(true)}
+      />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <TopBar
-          title="User Dashboard"
-          showHamburger={true}
-          onHamburgerPress={() => setSidebarVisible(true)}
-        />
-
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeTitle}>User Dashboard</Text>
