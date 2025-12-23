@@ -58,6 +58,49 @@ USING (
 );
 
 -- ============================================
+-- ASSET IMAGES POLICIES (for multiple asset photos)
+-- ============================================
+-- Allow public uploads to assets folder
+CREATE POLICY "Allow public uploads to assets folder"
+ON storage.objects
+FOR INSERT
+TO public
+WITH CHECK (
+  bucket_id = 'redi-fleet' 
+  AND (storage.foldername(name))[1] = 'assets'
+);
+
+-- Allow public read access to asset images
+CREATE POLICY "Allow public read access to asset images"
+ON storage.objects
+FOR SELECT
+TO public
+USING (
+  bucket_id = 'redi-fleet' 
+  AND (storage.foldername(name))[1] = 'assets'
+);
+
+-- Allow public updates to asset images
+CREATE POLICY "Allow public updates to asset images"
+ON storage.objects
+FOR UPDATE
+TO public
+USING (
+  bucket_id = 'redi-fleet' 
+  AND (storage.foldername(name))[1] = 'assets'
+);
+
+-- Allow public deletes to asset images
+CREATE POLICY "Allow public deletes to asset images"
+ON storage.objects
+FOR DELETE
+TO public
+USING (
+  bucket_id = 'redi-fleet' 
+  AND (storage.foldername(name))[1] = 'assets'
+);
+
+-- ============================================
 -- OPTION 2: Authenticated Users Only (If using Supabase Auth)
 -- ============================================
 -- Uncomment these if you switch to proper Supabase Auth sessions
@@ -108,11 +151,18 @@ USING (
 -- ============================================
 -- 1. If you get "policy already exists" errors, drop the existing policies first:
 --    DROP POLICY IF EXISTS "Allow public uploads to profiles folder" ON storage.objects;
+--    DROP POLICY IF EXISTS "Allow public uploads to assets folder" ON storage.objects;
 --
 -- 2. To check existing policies:
 --    SELECT * FROM pg_policies WHERE tablename = 'objects' AND schemaname = 'storage';
 --
--- 3. For better security with phone auth, consider:
+-- 3. To drop all asset-related policies if needed:
+--    DROP POLICY IF EXISTS "Allow public uploads to assets folder" ON storage.objects;
+--    DROP POLICY IF EXISTS "Allow public read access to asset images" ON storage.objects;
+--    DROP POLICY IF EXISTS "Allow public updates to asset images" ON storage.objects;
+--    DROP POLICY IF EXISTS "Allow public deletes to asset images" ON storage.objects;
+--
+-- 4. For better security with phone auth, consider:
 --    - Creating a backend API endpoint that uses service role key
 --    - Implementing proper Supabase Auth for phone users
 --    - Adding file size/type validation in your app

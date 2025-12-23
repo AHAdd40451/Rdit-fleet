@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,16 @@ import {
   Animated,
   Dimensions,
   SafeAreaView,
+  Image,
+  Alert,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BOTTOM_SHEET_HEIGHT = SCREEN_HEIGHT * 0.8;
@@ -28,6 +36,7 @@ interface Asset {
   user_id: string;
   created_at?: string;
   photo?: string | null;
+  photos?: string[] | null;
 }
 
 interface AssetBottomSheetProps {
@@ -35,6 +44,7 @@ interface AssetBottomSheetProps {
   asset: Asset | null;
   onClose: () => void;
   onEdit?: (asset: Asset) => void;
+  onPhotosUpdate?: (assetId: string, photos: string[]) => Promise<void>;
 }
 
 export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
@@ -42,8 +52,49 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
   asset,
   onClose,
   onEdit,
+  onPhotosUpdate,
 }) => {
   const slideAnim = React.useRef(new Animated.Value(BOTTOM_SHEET_HEIGHT)).current;
+  const { session } = useAuth();
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+
+  // Initialize photos from asset
+  useEffect(() => {
+    if (asset) {
+      // Support both old single photo and new photos array
+      const assetPhotos: string[] = [];
+      
+      // Handle photos array (could be array or JSON string)
+      if (asset.photos) {
+        if (Array.isArray(asset.photos)) {
+          assetPhotos.push(...asset.photos.filter((p): p is string => typeof p === 'string' && p.length > 0));
+        } else if (typeof asset.photos === 'string') {
+          try {
+            const parsed = JSON.parse(asset.photos);
+            if (Array.isArray(parsed)) {
+              assetPhotos.push(...parsed.filter((p): p is string => typeof p === 'string' && p.length > 0));
+            }
+          } catch {
+            // If parsing fails, treat as single photo URL
+            if (asset.photos.length > 0) {
+              assetPhotos.push(asset.photos);
+            }
+          }
+        }
+      }
+      
+      // Fallback to single photo field for backward compatibility
+      if (assetPhotos.length === 0 && asset.photo) {
+        assetPhotos.push(asset.photo);
+      }
+      
+      setPhotos(assetPhotos);
+    } else {
+      setPhotos([]);
+    }
+  }, [asset]);
 
   React.useEffect(() => {
     if (visible) {
@@ -61,6 +112,177 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
       }).start();
     }
   }, [visible, slideAnim]);
+
+  const uploadAssetImage = async (uri: string, index?: number): Promise<string> => {
+    try {
+      if (!asset?.id) throw new Error('Asset ID not found');
+
+      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${asset.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `assets/${fileName}`;
+
+      const contentTypeMap: { [key: string]: string } = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        gif: 'image/gif',
+        webp: 'image/webp',
+      };
+      const contentType = contentTypeMap[fileExt] || 'image/jpeg';
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const arrayBuffer = bytes.buffer;
+
+      const { error, data: uploadData } = await supabase.storage
+        .from('redi-fleet')
+        .upload(filePath, arrayBuffer, {
+          contentType: contentType,
+          upsert: false,
+          cacheControl: '3600',
+        });
+
+      if (error) {
+        console.error('Supabase upload error:', error);
+        throw error;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('redi-fleet')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      throw err;
+    }
+  };
+
+  const handleAddImages = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Allow photo access to upload images');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      setUploading(true);
+      const newPhotoUrls: string[] = [];
+
+      for (let i = 0; i < result.assets.length; i++) {
+        const asset = result.assets[i];
+        setUploadingIndex(i);
+        try {
+          const publicUrl = await uploadAssetImage(asset.uri, i);
+          newPhotoUrls.push(publicUrl);
+        } catch (error) {
+          console.error(`Failed to upload image ${i + 1}:`, error);
+          Alert.alert('Upload Error', `Failed to upload image ${i + 1}. Please try again.`);
+        }
+      }
+
+      const updatedPhotos = [...photos, ...newPhotoUrls];
+      setPhotos(updatedPhotos);
+
+      // Save to database
+      if (asset?.id && onPhotosUpdate) {
+        await onPhotosUpdate(asset.id, updatedPhotos);
+      }
+
+      Alert.alert('Success', `${newPhotoUrls.length} image(s) uploaded successfully`);
+    } catch (error) {
+      console.error('Error adding images:', error);
+      Alert.alert('Error', 'Failed to add images. Please try again.');
+    } finally {
+      setUploading(false);
+      setUploadingIndex(null);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      setUploading(true);
+      setUploadingIndex(0);
+      try {
+        const publicUrl = await uploadAssetImage(result.assets[0].uri);
+        const updatedPhotos = [...photos, publicUrl];
+        setPhotos(updatedPhotos);
+
+        // Save to database
+        if (asset?.id && onPhotosUpdate) {
+          await onPhotosUpdate(asset.id, updatedPhotos);
+        }
+
+        Alert.alert('Success', 'Photo uploaded successfully');
+      } catch (error) {
+        console.error('Error uploading photo:', error);
+        Alert.alert('Error', 'Failed to upload photo. Please try again.');
+      } finally {
+        setUploading(false);
+        setUploadingIndex(null);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handleRemovePhoto = async (index: number) => {
+    Alert.alert(
+      'Remove Photo',
+      'Are you sure you want to remove this photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const updatedPhotos = photos.filter((_, i) => i !== index);
+            setPhotos(updatedPhotos);
+
+            // Save to database
+            if (asset?.id && onPhotosUpdate) {
+              await onPhotosUpdate(asset.id, updatedPhotos);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (!asset) {
     return null;
@@ -113,6 +335,71 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
             >
+              {/* Image Gallery Section */}
+              <View style={styles.imageSection}>
+                <View style={styles.imageSectionHeader}>
+                  <Text style={styles.imageSectionTitle}>Photos</Text>
+                  <View style={styles.imageActionButtons}>
+                    <TouchableOpacity
+                      onPress={handleTakePhoto}
+                      style={styles.imageActionButton}
+                      disabled={uploading}
+                    >
+                      <Ionicons name="camera-outline" size={18} color="#14AB98" />
+                      <Text style={styles.imageActionButtonText}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleAddImages}
+                      style={styles.imageActionButton}
+                      disabled={uploading}
+                    >
+                      <Ionicons name="images-outline" size={18} color="#14AB98" />
+                      <Text style={styles.imageActionButtonText}>Add Photos</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {uploading && (
+                  <View style={styles.uploadingContainer}>
+                    <ActivityIndicator size="small" color="#14AB98" />
+                    <Text style={styles.uploadingText}>
+                      {uploadingIndex !== null
+                        ? `Uploading image ${uploadingIndex + 1}...`
+                        : 'Uploading...'}
+                    </Text>
+                  </View>
+                )}
+
+                {photos.length > 0 ? (
+                  <FlatList
+                    data={photos}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item, index) => `${item}-${index}`}
+                    contentContainerStyle={styles.imageList}
+                    renderItem={({ item, index }) => (
+                      <View style={styles.imageItem}>
+                        <Image source={{ uri: item }} style={styles.imageThumbnail} />
+                        <TouchableOpacity
+                          style={styles.removeImageButton}
+                          onPress={() => handleRemovePhoto(index)}
+                        >
+                          <Ionicons name="close-circle" size={24} color="#ff4444" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  />
+                ) : (
+                  <View style={styles.emptyImageContainer}>
+                    <Ionicons name="images-outline" size={48} color="#ccc" />
+                    <Text style={styles.emptyImageText}>No photos yet</Text>
+                    <Text style={styles.emptyImageSubtext}>
+                      Tap "Add Photos" to upload images
+                    </Text>
+                  </View>
+                )}
+              </View>
+
               {/* Top Row - Mileage and Odometer */}
               <View style={styles.cardRow}>
                 <View style={styles.card}>
@@ -395,5 +682,90 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  imageSection: {
+    marginBottom: 20,
+  },
+  imageSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  imageSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  imageActionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  imageActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#f0f0f0',
+  },
+  imageActionButtonText: {
+    fontSize: 13,
+    color: '#14AB98',
+    fontWeight: '500',
+  },
+  uploadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  uploadingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  imageList: {
+    paddingVertical: 4,
+  },
+  imageItem: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  imageThumbnail: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  emptyImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
+  },
+  emptyImageText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+    marginTop: 12,
+  },
+  emptyImageSubtext: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 4,
   },
 });

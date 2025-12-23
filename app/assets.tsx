@@ -37,6 +37,7 @@ interface Asset {
   mileage: number | null;
   user_id: string;
   photo?: string | null;
+  photos?: string[] | null;
 }
 
 export default function AssetsScreen() {
@@ -232,6 +233,42 @@ export default function AssetsScreen() {
     setSelectedAsset(null);
   };
 
+  const handlePhotosUpdate = async (assetId: string, photos: string[]) => {
+    try {
+      // Only admins can update photos
+      if (userProfile?.role !== 'admin') {
+        throw new Error('You do not have permission to update photos.');
+      }
+
+      // Update the asset with the new photos array
+      const { error: updateError } = await supabase
+        .from('assets')
+        .update({ photos: photos })
+        .eq('id', assetId);
+
+      if (updateError) {
+        console.error('Database error:', updateError);
+        throw new Error('Failed to update photos.');
+      }
+
+      // Update the selected asset in state to reflect the change
+      if (selectedAsset && selectedAsset.id === assetId) {
+        setSelectedAsset({ ...selectedAsset, photos: photos });
+      }
+
+      // Refresh the assets table
+      setRefreshAssetsTable(prev => prev + 1);
+      
+      showToast('Photos updated successfully!', 'success', 2000);
+    } catch (error: any) {
+      console.error('Update photos error:', error);
+      showToast(
+        error.message || 'An error occurred while updating photos.',
+        'error'
+      );
+    }
+  };
+
   const handleCloseModal = () => {
     if (!loading) {
       setShowAssetModal(false);
@@ -317,6 +354,7 @@ export default function AssetsScreen() {
         asset={selectedAsset}
         onClose={handleCloseBottomSheet}
         onEdit={userProfile?.role === 'admin' ? handleEditAsset : undefined}
+        onPhotosUpdate={userProfile?.role === 'admin' ? handlePhotosUpdate : undefined}
       />
     </SafeAreaView>
   );
