@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { supabase } from '../../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerForPushNotificationsAsync } from '../utils/registerForPushNotifications';
+import { savePushTokenToSupabase, removePushTokenFromSupabase } from '../utils/savePushToken';
 
 type UserRole = 'admin' | 'user';
 
@@ -60,6 +62,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const registerPushNotifications = async (profile: UserProfile) => {
+    try {
+      const tokenData = await registerForPushNotificationsAsync();
+      if (tokenData && profile.id) {
+        await savePushTokenToSupabase(profile.id, tokenData);
+        console.log('✅ Push notifications registered successfully');
+      } else if (!tokenData) {
+        // Token registration failed (likely due to missing projectId)
+        // This is expected if projectId is not configured
+        console.log('ℹ️ Push notifications not registered (projectId required)');
+      }
+    } catch (error) {
+      console.error('Error registering push notifications:', error);
+      // Don't throw - push notifications are not critical for app functionality
+    }
+  };
+
   const loadPhoneUser = async () => {
     try {
       const phoneUserData = await AsyncStorage.getItem('phone_user');
@@ -99,6 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Update AsyncStorage with fresh data including avatar_url
           await AsyncStorage.setItem('phone_user', JSON.stringify(freshProfile));
           setUserProfile(freshProfile as UserProfile);
+          // Register for push notifications
+          registerPushNotifications(freshProfile as UserProfile);
           // Create a mock session object for phone users
           setSession({} as Session);
           setUser({} as User);
@@ -133,6 +154,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session.user);
         const profile = await fetchUserProfile(session.user.email);
         setUserProfile(profile);
+        // Register for push notifications after profile is loaded
+        if (profile) {
+          registerPushNotifications(profile);
+        }
         setLoading(false);
       } else {
         // Check for phone-based user
@@ -142,6 +167,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
           setUser(null);
           setUserProfile(null);
+        } else {
+          // Register for push notifications for phone-based user
+          const phoneUserData = await AsyncStorage.getItem('phone_user');
+          if (phoneUserData) {
+            const userData = JSON.parse(phoneUserData);
+            if (userData.id) {
+              registerPushNotifications(userData as UserProfile);
+            }
+          }
         }
       }
     });
@@ -160,6 +194,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session.user);
         const profile = await fetchUserProfile(session.user.email);
         setUserProfile(profile);
+        // Register for push notifications after profile is loaded
+        if (profile) {
+          registerPushNotifications(profile);
+        }
       } else {
         // Check for phone-based user
         const hasPhoneUser = await loadPhoneUser();
@@ -167,6 +205,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
           setUser(null);
           setUserProfile(null);
+        } else {
+          // Register for push notifications for phone-based user
+          const phoneUserData = await AsyncStorage.getItem('phone_user');
+          if (phoneUserData) {
+            const userData = JSON.parse(phoneUserData);
+            if (userData.id) {
+              registerPushNotifications(userData as UserProfile);
+            }
+          }
         }
       }
     });
@@ -178,6 +225,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Set signing out flag to prevent reloading phone users
       isSigningOutRef.current = true;
+      
+      // Remove push tokens before signing out
+      if (userProfile?.id) {
+        await removePushTokenFromSupabase(userProfile.id);
+      }
+      
       // Clear phone user data first
       await AsyncStorage.removeItem('phone_user');
       // Clear all state immediately

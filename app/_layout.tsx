@@ -4,9 +4,11 @@ import { PaperProvider } from 'react-native-paper';
 import { ToastProvider } from '../src/components/Toast';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { ConfirmationModalProvider } from '../src/contexts/ConfirmationModalContext';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import * as Linking from 'expo-linking';
 import { LogBox } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import '../src/lib/notifications'; // Import notification handler
 
 // Suppress VirtualizedList warning from react-native-phone-number-input
 // This warning occurs because PhoneInput uses a VirtualizedList internally for country selection
@@ -19,6 +21,54 @@ function RootLayoutNav() {
   const { session, userProfile, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
+
+  // Set up push notification listeners
+  useEffect(() => {
+    // Listener for notifications received while app is foregrounded
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notification received:', notification);
+      // You can show a toast or update UI here if needed
+    });
+
+    // Listener for when user taps on a notification
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Notification tapped:', response);
+      const data = response.notification.request.content.data;
+      
+      // Handle navigation based on notification data
+      if (data?.type === 'asset_created' && data?.asset_id) {
+        // Navigate to assets screen or specific asset
+        router.push('/assets');
+      } else if (data?.type) {
+        // Navigate to notifications screen
+        router.push('/notifications');
+      }
+    });
+
+    // Get initial notification if app was opened from a notification
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        console.log('App opened from notification:', response);
+        const data = response.notification.request.content.data;
+        if (data?.type === 'asset_created' && data?.asset_id) {
+          router.push('/assets');
+        } else {
+          router.push('/notifications');
+        }
+      }
+    });
+
+    return () => {
+      if (notificationListener.current) {
+        notificationListener.current.remove();
+      }
+      if (responseListener.current) {
+        responseListener.current.remove();
+      }
+    };
+  }, [router]);
 
   // Handle deep links for password reset
   useEffect(() => {
@@ -30,7 +80,7 @@ function RootLayoutNav() {
         // Navigate to reset-password screen with the URL parameters
         router.replace({
           pathname: '/reset-password',
-          params: queryParams,
+          params: queryParams || undefined,
         });
       }
     };
@@ -64,10 +114,11 @@ function RootLayoutNav() {
     const isAssetsRoute = currentRoute === 'assets';
     const isProfileRoute = currentRoute === 'profile';
     const isSettingsRoute = currentRoute === 'settings';
+    const isNotificationsRoute = currentRoute === 'notifications';
 
     if (!isAuthenticated) {
       // User is not signed in
-      if (isDashboardRoute || isCompanyRoute || isAssetsRoute || isProfileRoute || isSettingsRoute) {
+      if (isDashboardRoute || isCompanyRoute || isAssetsRoute || isProfileRoute || isSettingsRoute || isNotificationsRoute) {
         // Trying to access protected route, redirect to login
         router.replace('/');
       }
@@ -88,7 +139,7 @@ function RootLayoutNav() {
         // User is signed in and accessing dashboard routes
         // Ensure they're on the right dashboard based on role
         // Note: Individual pages (adminDashboard, company) handle their own redirects
-        if (userProfile.role === 'admin' && currentRoute !== 'adminDashboard' && currentRoute !== 'home' && currentRoute !== 'company' && currentRoute !== 'assets') {
+        if (userProfile.role === 'admin' && currentRoute !== 'adminDashboard' && currentRoute !== 'home') {
           router.replace('/adminDashboard');
         } else if (userProfile.role === 'user' && currentRoute !== 'userDashboard' && currentRoute !== 'home') {
           router.replace('/userDashboard');
