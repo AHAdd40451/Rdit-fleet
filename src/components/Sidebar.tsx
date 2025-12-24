@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirmationModal } from '../contexts/ConfirmationModalContext';
 import { supabase } from '../../lib/supabase';
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ visible, onClose }) => {
   const router = useRouter();
   const { userProfile, signOut } = useAuth();
   const { showConfirmation } = useConfirmationModal();
+  const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
 
@@ -165,7 +167,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ visible, onClose }) => {
           </View>
 
           {/* Logout */}
-          <TouchableOpacity style={styles.logout} onPress={handleLogout}>
+          <TouchableOpacity 
+            style={[styles.logout, { paddingBottom: Math.max(insets.bottom, 20) }]} 
+            onPress={handleLogout}
+          >
             <Ionicons name="log-out-outline" size={22} color="#E53935" />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>

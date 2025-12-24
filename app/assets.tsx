@@ -104,11 +104,6 @@ export default function AssetsScreen() {
     setLoading(true);
 
     try {
-      // Only admins can create or update assets
-      if (userProfile?.role !== 'admin') {
-        throw new Error('You do not have permission to create or update assets.');
-      }
-
       // Assets table uses UUID (from Supabase auth session.user.id)
       // Must use UUID, not numeric userProfile.id
       const currentUserId = session?.user?.id;
@@ -117,8 +112,26 @@ export default function AssetsScreen() {
         throw new Error('Unable to identify current user. Please log in again.');
       }
 
+      // Only admins can create assets, but both admins and users can update
+      if (!editingAsset && userProfile?.role !== 'admin') {
+        throw new Error('You do not have permission to create assets. Only admins can create new assets.');
+      }
+
       if (editingAsset) {
-        // Update existing asset - only admins can do this
+        // Update existing asset - both admins and users can do this
+        // First, fetch the current asset to get old values for logging
+        const { data: currentAsset, error: fetchError } = await supabase
+          .from('assets')
+          .select('*')
+          .eq('id', editingAsset.id)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching current asset:', fetchError);
+          throw new Error('Failed to fetch current asset data.');
+        }
+
+        // Update the asset
         const { error: updateError } = await supabase
           .from('assets')
           .update(assetData)
@@ -132,9 +145,55 @@ export default function AssetsScreen() {
           );
         }
 
+        // Create log entry for asset update
+        try {
+          const oldValues: any = {};
+          const newValues: any = {};
+          const changes: any = {};
+
+          // Compare old and new values to track changes
+          Object.keys(assetData).forEach((key) => {
+            const typedKey = key as keyof typeof assetData;
+            const oldValue = currentAsset?.[typedKey];
+            const newValue = assetData[typedKey];
+
+            if (oldValue !== newValue) {
+              oldValues[key] = oldValue;
+              newValues[key] = newValue;
+              changes[key] = { from: oldValue, to: newValue };
+            }
+          });
+
+          // If there are changes, log them
+          if (Object.keys(changes).length > 0) {
+            const logEntry = {
+              asset_id: editingAsset.id,
+              user_id: currentUserId,
+              action: 'updated',
+              user_role: userProfile?.role || 'user',
+              changes: changes,
+              old_values: oldValues,
+              new_values: newValues,
+              description: `${userProfile?.role === 'admin' ? 'Admin' : 'User'} updated asset "${assetData.asset_name || editingAsset.asset_name}"`,
+            };
+
+            const { error: logError } = await supabase
+              .from('asset_logs')
+              .insert([logEntry]);
+
+            if (logError) {
+              console.error('Error creating asset log:', logError);
+              // Don't throw error here, asset was updated successfully
+            }
+          }
+        } catch (logErr) {
+          console.error('Error in log creation:', logErr);
+          // Don't throw error here, asset was updated successfully
+        }
+
         showToast('Asset updated successfully!', 'success', 2000);
       } else {
-        // Create new asset
+        // Create new asset - only admins can do this
         const newAssetData = {
           ...assetData,
           user_id: currentUserId,
@@ -152,6 +211,32 @@ export default function AssetsScreen() {
           throw new Error(
             `Database error: ${errorMessage}. Please check your table structure.`
           );
+        }
+
+        // Create log entry for asset creation
+        try {
+          const logEntry = {
+            asset_id: insertedAsset.id,
+            user_id: currentUserId,
+            action: 'created',
+            user_role: 'admin',
+            changes: null,
+            old_values: null,
+            new_values: newAssetData,
+            description: `Admin created new asset "${assetData.asset_name}"`,
+          };
+
+          const { error: logError } = await supabase
+            .from('asset_logs')
+            .insert([logEntry]);
+
+          if (logError) {
+            console.error('Error creating asset log:', logError);
+            // Don't throw error here, asset was created successfully
+          }
+        } catch (logErr) {
+          console.error('Error in log creation:', logErr);
+          // Don't throw error here, asset was created successfully
         }
 
         // Create notifications for all users linked to this admin
@@ -214,11 +299,7 @@ export default function AssetsScreen() {
   };
 
   const handleEditAsset = (asset: Asset) => {
-    // Only admins can edit assets
-    if (userProfile?.role !== 'admin') {
-      showToast('You do not have permission to edit assets.', 'error');
-      return;
-    }
+    // Both admins and users can edit assets
     setEditingAsset(asset);
     setShowAssetModal(true);
   };
@@ -334,7 +415,7 @@ export default function AssetsScreen() {
             </View>
             <AssetsTable
               key={refreshAssetsTable}
-              onEditAsset={userProfile?.role === 'admin' ? handleEditAsset : undefined}
+              onEditAsset={handleEditAsset}
               onAssetClick={handleAssetClick}
             />
           </View>
@@ -353,7 +434,7 @@ export default function AssetsScreen() {
         visible={showBottomSheet}
         asset={selectedAsset}
         onClose={handleCloseBottomSheet}
-        onEdit={userProfile?.role === 'admin' ? handleEditAsset : undefined}
+        onEdit={handleEditAsset}
         onPhotosUpdate={userProfile?.role === 'admin' ? handlePhotosUpdate : undefined}
       />
     </SafeAreaView>

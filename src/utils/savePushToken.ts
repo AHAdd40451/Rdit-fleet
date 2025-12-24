@@ -11,56 +11,106 @@ export async function savePushTokenToSupabase(
   tokenData: PushTokenData
 ): Promise<boolean> {
   try {
-    // Check if token already exists for this user
-    const { data: existingToken, error: checkError } = await supabase
+    // First, check if the token already exists (token has UNIQUE constraint)
+    const { data: existingTokenByToken, error: tokenCheckError } = await supabase
+      .from('push_tokens')
+      .select('id, user_id, token, platform')
+      .eq('token', tokenData.token)
+      .maybeSingle();
+
+    if (tokenCheckError && tokenCheckError.code !== 'PGRST116') {
+      // PGRST116 is "not found" which is fine
+      console.error('Error checking existing token:', tokenCheckError);
+      return false;
+    }
+
+    if (existingTokenByToken) {
+      // Token exists - update it (even if user_id changed, token is unique per device)
+      const { error: updateError } = await supabase
+        .from('push_tokens')
+        .update({
+          user_id: userId,
+          device_id: tokenData.deviceId,
+          platform: tokenData.platform,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingTokenByToken.id);
+
+      if (updateError) {
+        console.error('Error updating push token:', updateError);
+        return false;
+      }
+      console.log('Push token updated successfully');
+      return true;
+    }
+
+    // Token doesn't exist - check if user already has a token for this platform
+    const { data: existingTokenByUser, error: userCheckError } = await supabase
       .from('push_tokens')
       .select('id, token')
       .eq('user_id', userId)
       .eq('platform', tokenData.platform)
       .maybeSingle();
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 is "not found" which is fine
-      console.error('Error checking existing token:', checkError);
+    if (userCheckError && userCheckError.code !== 'PGRST116') {
+      console.error('Error checking user token:', userCheckError);
       return false;
     }
 
-    if (existingToken) {
-      // Update existing token if it's different
-      if (existingToken.token !== tokenData.token) {
+    if (existingTokenByUser) {
+      // User has a token for this platform but it's different - update it
+      const { error: updateError } = await supabase
+        .from('push_tokens')
+        .update({
+          token: tokenData.token,
+          device_id: tokenData.deviceId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingTokenByUser.id);
+
+      if (updateError) {
+        console.error('Error updating push token:', updateError);
+        return false;
+      }
+      console.log('Push token updated successfully');
+      return true;
+    }
+
+    // No existing token - insert new one
+    const { error: insertError } = await supabase
+      .from('push_tokens')
+      .insert({
+        user_id: userId,
+        token: tokenData.token,
+        device_id: tokenData.deviceId,
+        platform: tokenData.platform,
+      });
+
+    if (insertError) {
+      // If insert fails due to duplicate (race condition), try to update instead
+      if (insertError.code === '23505') {
+        // Duplicate key error - token was inserted between our check and insert
         const { error: updateError } = await supabase
           .from('push_tokens')
           .update({
-            token: tokenData.token,
+            user_id: userId,
             device_id: tokenData.deviceId,
+            platform: tokenData.platform,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', existingToken.id);
+          .eq('token', tokenData.token);
 
         if (updateError) {
-          console.error('Error updating push token:', updateError);
+          console.error('Error updating push token after duplicate:', updateError);
           return false;
         }
-        console.log('Push token updated successfully');
+        console.log('Push token updated successfully (handled duplicate)');
+        return true;
       }
-    } else {
-      // Insert new token
-      const { error: insertError } = await supabase
-        .from('push_tokens')
-        .insert({
-          user_id: userId,
-          token: tokenData.token,
-          device_id: tokenData.deviceId,
-          platform: tokenData.platform,
-        });
-
-      if (insertError) {
-        console.error('Error saving push token:', insertError);
-        return false;
-      }
-      console.log('Push token saved successfully');
+      console.error('Error saving push token:', insertError);
+      return false;
     }
-
+    console.log('Push token saved successfully');
     return true;
   } catch (error) {
     console.error('Unexpected error saving push token:', error);

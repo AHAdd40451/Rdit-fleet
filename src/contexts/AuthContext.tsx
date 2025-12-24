@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync } from '../utils/registerForPushNotifications';
 import { savePushTokenToSupabase, removePushTokenFromSupabase } from '../utils/savePushToken';
+import { sendPushNotification } from '../utils/sendPushNotification';
 
 type UserRole = 'admin' | 'user';
 
