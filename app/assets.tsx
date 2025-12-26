@@ -21,6 +21,7 @@ import { AssetModal } from '../src/components/AssetModal';
 import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
 import { TopBar } from '../src/components/TopBar';
 import { Sidebar } from '../src/components/Sidebar';
+import { generateUUIDFromString } from '../src/utils/generateUUID';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -87,26 +88,104 @@ export default function AssetsScreen() {
     checkCompany();
   }, [session, userProfile, router]);
 
-  const handleLogout = () => {
-    showConfirmation({
-      title: 'Logout',
-      message: 'Are you sure you want to logout?',
-      confirmText: 'Logout',
-      cancelText: 'Cancel',
-      onConfirm: async () => {
-        await signOut();
-        router.replace('/');
-      },
-    });
-  };
-
   const handleSaveAsset = async (assetData: Omit<Asset, 'id' | 'user_id'>) => {
     setLoading(true);
 
     try {
       // Assets table uses UUID (from Supabase auth session.user.id)
       // Must use UUID, not numeric userProfile.id
-      const currentUserId = session?.user?.id;
+      let currentUserId = session?.user?.id;
+      
+      // If session is not available, try to get it directly from Supabase
+      // This handles cases where the session might not be loaded in context yet
+      if (!currentUserId) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        currentUserId = currentSession?.user?.id;
+      }
+      
+      // For phone-based users: check if they have a Supabase Auth account
+      // If not, we need to create one or use an alternative approach
+      if (!currentUserId && userProfile) {
+        // If user doesn't have an email, generate a deterministic UUID from their phone number or ID
+        if (!userProfile.email) {
+          // Generate a deterministic UUID from phone number (preferred) or user ID
+          const identifier = userProfile.phone_no || `user_${userProfile.id}`;
+          currentUserId = generateUUIDFromString(identifier);
+          
+          console.log('Generated UUID for user without email:', currentUserId);
+          
+          // For users without email, we use the generated UUID directly
+          // No need to create Supabase Auth account
+        }
+
+        // User has email - try to get or create Supabase Auth account
+        // First, check if user is already signed in (might have been signed in during phone login)
+        try {
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser && authUser.email === userProfile.email) {
+            currentUserId = authUser.id;
+          }
+        } catch (getUserError) {
+          // User not signed in, continue to create account
+          console.log('User not signed in, will create auth account if needed');
+        }
+
+        // If still no user ID, try to create a Supabase Auth account
+        if (!currentUserId && userProfile.email) {
+          try {
+            // Generate a secure random password (user won't need to use it for phone login)
+            const tempPassword = `phone_${userProfile.id}_${Date.now()}_${Math.random().toString(36).slice(-8)}`;
+            
+            // Try to sign up (create new auth account)
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: userProfile.email,
+              password: tempPassword,
+              options: {
+                emailRedirectTo: undefined, // No email confirmation needed for phone-based users
+              }
+            });
+
+            if (signUpError) {
+              // If sign up fails, check if it's because user already exists
+              if (signUpError.message.includes('already registered') || 
+                  signUpError.message.includes('already exists') ||
+                  signUpError.message.includes('User already registered')) {
+                // User already exists in auth but we're not signed in
+                // This means the account was created but we don't have the session
+                // We need to sign in, but we don't know the password
+                // For now, show a helpful error message
+                throw new Error('Your account requires email/password authentication. Please sign out and sign in with your email and password, or contact support to reset your password.');
+              } else {
+                throw signUpError;
+              }
+            } else if (signUpData.user) {
+              // Successfully created auth account
+              currentUserId = signUpData.user.id;
+              
+              // Sign in with the new account to establish session
+              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: userProfile.email,
+                password: tempPassword,
+              });
+              
+              if (signInError) {
+                console.error('Error signing in after account creation:', signInError);
+                // Even if sign in fails, we have the user ID, so continue
+              } else if (signInData.user) {
+                // Session established - AuthContext will pick this up via onAuthStateChange
+                console.log('Supabase Auth session established for phone user');
+              }
+            }
+          } catch (authError: any) {
+            console.error('Error setting up Supabase Auth for phone user:', authError);
+            // If it's our custom error, throw it as is
+            if (authError.message && authError.message.includes('requires email/password')) {
+              throw authError;
+            }
+            throw new Error('Unable to set up authentication. Please contact support or sign in with email and password.');
+          }
+        }
+      }
       
       if (!currentUserId) {
         throw new Error('Unable to identify current user. Please log in again.');

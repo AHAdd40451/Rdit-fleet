@@ -68,6 +68,45 @@ export default function VerifyOtpScreen() {
         // Don't throw error here, OTP is already verified
       }
 
+      // If user has an email, create a Supabase Auth account for them
+      // This ensures they have an auth UUID available for asset creation
+      if (userData.email) {
+        try {
+          // Generate a secure random password for the user
+          // They can reset it later if needed, but phone login doesn't require it
+          const tempPassword = `phone_${userData.id}_${Date.now()}_${Math.random().toString(36).slice(-12)}`;
+          
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: userData.email.trim(),
+            password: tempPassword,
+            options: {
+              emailRedirectTo: undefined, // No email confirmation needed for phone-based users
+            }
+          });
+
+          if (authError) {
+            // If user already exists in auth, that's okay - they can use it
+            if (!authError.message.includes('already registered') && !authError.message.includes('already exists')) {
+              console.error('Error creating Supabase Auth account:', authError);
+              // Don't throw - phone login can still work without auth account
+            } else {
+              console.log('Supabase Auth account already exists for user:', userData.email);
+            }
+          } else if (authData.user) {
+            // Successfully created auth account
+            console.log('Supabase Auth account created for phone user:', userData.email);
+            // Sign in with the new account to establish session
+            await supabase.auth.signInWithPassword({
+              email: userData.email.trim(),
+              password: tempPassword,
+            });
+          }
+        } catch (authErr) {
+          console.error('Error creating Supabase Auth account:', authErr);
+          // Don't throw - phone login can still work without auth account
+        }
+      }
+
       // Store user info in AsyncStorage for phone-based authentication
       // This allows AuthContext to recognize the user as authenticated
       const userProfileData = {

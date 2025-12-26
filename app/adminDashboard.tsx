@@ -91,7 +91,20 @@ export default function AdminDashboardScreen() {
       } else {
         // Create new user
         // Get current admin user ID
-        const currentUserId = session?.user?.id || userProfile?.id;
+        let currentUserId = session?.user?.id;
+        
+        // If session is not available, try to get it directly from Supabase
+        // This handles cases where the session might not be loaded in context yet
+        if (!currentUserId) {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          currentUserId = currentSession?.user?.id;
+        }
+        
+        // Fallback to userProfile.id if still not available (for phone-based users)
+        // Note: userProfile.id is numeric, but userId field may accept it
+        if (!currentUserId) {
+          currentUserId = userProfile?.id?.toString();
+        }
         
         if (!currentUserId) {
           throw new Error('Unable to identify current user. Please log in again.');
@@ -102,6 +115,41 @@ export default function AdminDashboardScreen() {
           role: 'user',
           userId: currentUserId, // Save the admin user ID who created this user
         };
+
+        // If user has an email, create a Supabase Auth account for them
+        // This allows phone-based users to have auth UUIDs for asset creation
+        if (userData.email) {
+          try {
+            // Generate a secure random password for the user
+            // They can reset it later if needed, but phone login doesn't require it
+            const tempPassword = `user_${Date.now()}_${Math.random().toString(36).slice(-12)}`;
+            
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+              email: userData.email.trim(),
+              password: tempPassword,
+              options: {
+                emailRedirectTo: undefined, // No email confirmation needed for phone-based users
+              }
+            });
+
+            if (authError) {
+              // If user already exists in auth, that's okay - continue with user creation
+              if (!authError.message.includes('already registered') && !authError.message.includes('already exists')) {
+                console.error('Error creating Supabase Auth account:', authError);
+                // Don't throw - we can still create the user in the database
+                // They can create auth account later when needed
+              }
+            } else if (authData.user) {
+              // Successfully created auth account
+              // The auth UUID is now available in authData.user.id
+              // We don't need to store it separately as it's linked by email
+              console.log('Supabase Auth account created for user:', userData.email);
+            }
+          } catch (authErr) {
+            console.error('Error creating Supabase Auth account:', authErr);
+            // Don't throw - continue with user creation in database
+          }
+        }
 
         const { error: insertError } = await supabase
           .from('users')

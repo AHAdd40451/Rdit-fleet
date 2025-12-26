@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { LoadingBar } from './LoadingBar';
 import { useToast } from './Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { generateUUIDFromString } from '../utils/generateUUID';
 
 interface Asset {
   id: string;
@@ -54,6 +55,12 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({
       if (userProfile?.role === 'admin') {
         // Admin users: show assets where user_id matches their session.user.id (their own assets)
         filterUserId = session?.user?.id;
+        
+        // If no session (phone-based admin without email), generate UUID from phone number or ID
+        if (!filterUserId && userProfile) {
+          const identifier = userProfile.phone_no || `user_${userProfile.id}`;
+          filterUserId = generateUUIDFromString(identifier);
+        }
       } else if (userProfile?.role === 'user') {
         // Regular users: show assets where user_id matches their userId (the admin who created them)
         // Check if userId is already in userProfile, otherwise fetch it
