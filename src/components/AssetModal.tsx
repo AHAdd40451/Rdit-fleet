@@ -189,25 +189,27 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       animationType="fade"
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <TouchableWithoutFeedback onPress={handleClose}>
-          <View style={styles.backdrop} />
-        </TouchableWithoutFeedback>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
-          pointerEvents="box-none"
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled={true}
-            scrollEnabled={true}
-            bounces={false}
-            alwaysBounceVertical={false}
-          >
-            <View style={styles.modalContent}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingContainer}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={handleClose}>
+            <View style={styles.backdrop} />
+          </TouchableWithoutFeedback>
+          <View style={styles.modalContainer}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+              scrollEnabled={true}
+              bounces={false}
+              alwaysBounceVertical={false}
+              contentInsetAdjustmentBehavior="automatic"
+            >
+              <View style={styles.modalContent}>
                   <View style={styles.header}>
                     <Text style={styles.modalTitle}>
                       {editingAsset ? 'Edit Asset' : 'Create New Asset'}
@@ -393,14 +395,18 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                     </View>
                   </View>
                 </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
+            </ScrollView>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -419,11 +425,11 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 500,
     maxHeight: '90%',
-    pointerEvents: 'box-none',
+    minHeight: 450,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingBottom: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
