@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  LogBox,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import PhoneInput from 'react-native-phone-number-input';
+import { CountryPicker } from 'react-native-country-codes-picker';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
@@ -23,12 +23,6 @@ import { BottomNavBar } from '../src/components/BottomNavBar';
 import { TopBar } from '../src/components/TopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sidebar } from '../src/components/Sidebar';
-
-// Suppress VirtualizedList warning from react-native-phone-number-input
-LogBox.ignoreLogs([
-  'VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead.',
-  /VirtualizedLists should never be nested/,
-]);
 
 const TEAL_GREEN = '#14AB98';
 
@@ -45,10 +39,11 @@ export default function SettingsScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
+  const [countryFlag, setCountryFlag] = useState('🇺🇸');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const phoneInput = useRef<PhoneInput>(null);
 
   // Company state
   const [companyName, setCompanyName] = useState('');
@@ -72,8 +67,18 @@ export default function SettingsScreen() {
       setLastName(userProfile.last_name || '');
       setEmail(userProfile.email || '');
       const phone = userProfile.phone_no || '';
-      setPhoneNumber(phone);
-      setFormattedPhoneNumber(phone);
+      // Extract country code and phone number if phone starts with +
+      if (phone.startsWith('+')) {
+        const match = phone.match(/^(\+\d{1,4})(.*)/);
+        if (match) {
+          setCountryCode(match[1]);
+          setPhoneNumber(match[2].trim());
+        } else {
+          setPhoneNumber(phone);
+        }
+      } else {
+        setPhoneNumber(phone);
+      }
     }
   }, [userProfile]);
 
@@ -124,8 +129,9 @@ export default function SettingsScreen() {
     }
 
     if (phoneNumber.trim()) {
-      const checkValid = phoneInput.current?.isValidNumber(phoneNumber);
-      if (!checkValid) {
+      // Basic phone number validation (should have at least 7 digits)
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (digitsOnly.length < 7) {
         showToast('Please enter a valid phone number', 'error');
         return;
       }
@@ -157,7 +163,8 @@ export default function SettingsScreen() {
       }
 
       if (phoneNumber.trim()) {
-        const formattedValue = formattedPhoneNumber || phoneNumber;
+        // Format phone number with country code
+        const formattedValue = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
         updateData.phone_no = formattedValue.trim();
       }
 
@@ -211,8 +218,18 @@ export default function SettingsScreen() {
       setLastName(userProfile.last_name || '');
       setEmail(userProfile.email || '');
       const phone = userProfile.phone_no || '';
-      setPhoneNumber(phone);
-      setFormattedPhoneNumber(phone);
+      // Extract country code and phone number if phone starts with +
+      if (phone.startsWith('+')) {
+        const match = phone.match(/^(\+\d{1,4})(.*)/);
+        if (match) {
+          setCountryCode(match[1]);
+          setPhoneNumber(match[2].trim());
+        } else {
+          setPhoneNumber(phone);
+        }
+      } else {
+        setPhoneNumber(phone);
+      }
     }
     setIsEditingProfile(false);
   };
@@ -371,27 +388,34 @@ export default function SettingsScreen() {
           <View style={[styles.formSection, styles.inputContainer]}>
             <Text style={styles.label}>{item.label}</Text>
             <View style={styles.phoneInputWrapper}>
-              <PhoneInput
-                ref={phoneInput}
-                defaultValue={phoneNumber}
-                defaultCode="US"
-                layout="first"
-                onChangeText={(text) => {
-                  setPhoneNumber(text);
-                }}
-                onChangeFormattedText={(text) => {
-                  setFormattedPhoneNumber(text);
-                }}
-                withDarkTheme={false}
-                withShadow={false}
-                autoFocus={false}
+              <TouchableOpacity
+                style={styles.countryCodeButton}
+                onPress={() => setShowCountryPicker(true)}
                 disabled={!isEditingProfile}
-                containerStyle={styles.phoneInput}
-                textContainerStyle={styles.phoneInputTextContainer}
-                textInputStyle={styles.phoneInputText}
-                codeTextStyle={styles.phoneInputCodeText}
+              >
+                <Text style={styles.countryFlag}>{countryFlag}</Text>
+                <Text style={styles.countryCodeText}>{countryCode}</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={styles.phoneInputText}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                placeholder="Phone number"
+                keyboardType="phone-pad"
+                editable={isEditingProfile}
+                placeholderTextColor="#999"
               />
             </View>
+            <CountryPicker
+              show={showCountryPicker}
+              pickerButtonOnPress={(item) => {
+                setCountryCode(item.dial_code);
+                setCountryFlag(item.flag);
+                setShowCountryPicker(false);
+              }}
+              onBackdropPress={() => setShowCountryPicker(false)}
+              lang="en"
+            />
           </View>
         );
       }
@@ -915,28 +939,41 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   phoneInputWrapper: {
-    width: '100%',
-  },
-  phoneInput: {
+    flexDirection: 'row',
     width: '100%',
     height: 48,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 8,
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-  phoneInputTextContainer: {
-    backgroundColor: '#fff',
-    paddingVertical: 0,
+  countryCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: '100%',
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    backgroundColor: '#f9f9f9',
+  },
+  countryFlag: {
+    fontSize: 20,
+    marginRight: 6,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
   },
   phoneInputText: {
+    flex: 1,
     fontSize: 16,
     color: '#000',
+    paddingHorizontal: 12,
     paddingVertical: 0,
-  },
-  phoneInputCodeText: {
-    fontSize: 16,
-    color: '#000',
+    height: '100%',
   },
   unitsContainer: {
     flexDirection: 'row',

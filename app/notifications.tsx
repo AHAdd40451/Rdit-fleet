@@ -225,7 +225,7 @@ export default function NotificationsScreen() {
                   styles.notificationCard,
                   !notification.read && styles.unreadCard,
                 ]}
-                onPress={() => handleMarkAsRead(notification.id)}
+                onPress={() => router.push(`/notifications/${notification.id}`)}
                 activeOpacity={0.7}
               >
                 <View style={styles.notificationContent}>

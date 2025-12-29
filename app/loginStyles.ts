@@ -94,26 +94,48 @@ export const loginStyles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
   },
-  phoneInput: {
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000',
+    marginBottom: 8,
+  },
+  phoneInputWrapper: {
+    flexDirection: 'row',
     width: '100%',
     height: 48,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 8,
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-  phoneInputTextContainer: {
-    backgroundColor: '#fff',
-    paddingVertical: 0,
+  countryCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: '100%',
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    backgroundColor: '#f9f9f9',
+  },
+  countryFlag: {
+    fontSize: 20,
+    marginRight: 6,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
   },
   phoneInputText: {
+    flex: 1,
     fontSize: 16,
     color: '#000',
+    paddingHorizontal: 12,
     paddingVertical: 0,
-  },
-  phoneInputCodeText: {
-    fontSize: 16,
-    color: '#000',
+    height: '100%',
   },
   passwordContainer: {
     marginBottom: 0,

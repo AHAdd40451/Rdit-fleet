@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,15 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  LogBox,
   Alert,
+  TextInput,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import PhoneInput from 'react-native-phone-number-input';
+import { CountryPicker } from 'react-native-country-codes-picker';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
@@ -37,11 +37,12 @@ export default function ProfileScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
+  const [countryFlag, setCountryFlag] = useState('🇺🇸');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
-  const phoneInput = useRef<PhoneInput>(null);
 
   // Load user profile data into form
   useEffect(() => {
@@ -50,8 +51,18 @@ export default function ProfileScreen() {
       setLastName(userProfile.last_name || '');
       setEmail(userProfile.email || '');
       const phone = userProfile.phone_no || '';
-      setPhoneNumber(phone);
-      setFormattedPhoneNumber(phone);
+      // Extract country code and phone number if phone starts with +
+      if (phone.startsWith('+')) {
+        const match = phone.match(/^(\+\d{1,4})(.*)/);
+        if (match) {
+          setCountryCode(match[1]);
+          setPhoneNumber(match[2].trim());
+        } else {
+          setPhoneNumber(phone);
+        }
+      } else {
+        setPhoneNumber(phone);
+      }
       console.log('userProfile.avatar_url', userProfile);
       // Load profile image URL if it exists, otherwise reset to null
       if (userProfile.avatar_url && userProfile.avatar_url.trim() !== '') {
@@ -70,8 +81,9 @@ export default function ProfileScreen() {
 
     // Validate phone number if provided
     if (phoneNumber.trim()) {
-      const checkValid = phoneInput.current?.isValidNumber(phoneNumber);
-      if (!checkValid) {
+      // Basic phone number validation (should have at least 7 digits)
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (digitsOnly.length < 7) {
         showToast('Please enter a valid phone number', 'error');
         return;
       }
@@ -104,8 +116,8 @@ export default function ProfileScreen() {
       }
 
       if (phoneNumber.trim()) {
-        // Use formatted phone number (with country code) from state
-        const formattedValue = formattedPhoneNumber || phoneNumber;
+        // Format phone number with country code
+        const formattedValue = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
         updateData.phone_no = formattedValue.trim();
       }
 
@@ -166,8 +178,18 @@ export default function ProfileScreen() {
         setLastName(userProfile.last_name || '');
         setEmail(userProfile.email || '');
         const phone = userProfile.phone_no || '';
-        setPhoneNumber(phone);
-        setFormattedPhoneNumber(phone);
+        // Extract country code and phone number if phone starts with +
+        if (phone.startsWith('+')) {
+          const match = phone.match(/^(\+\d{1,4})(.*)/);
+          if (match) {
+            setCountryCode(match[1]);
+            setPhoneNumber(match[2].trim());
+          } else {
+            setPhoneNumber(phone);
+          }
+        } else {
+          setPhoneNumber(phone);
+        }
       }
       setIsEditing(false);
   };
@@ -402,27 +424,34 @@ export default function ProfileScreen() {
         <View style={profileStyles.inputContainer}>
           <Text style={profileStyles.label}>Phone Number</Text>
           <View style={profileStyles.phoneInputWrapper}>
-            <PhoneInput
-              ref={phoneInput}
-              defaultValue={phoneNumber}
-              defaultCode="US"
-              layout="first"
-              onChangeText={(text) => {
-                setPhoneNumber(text);
-              }}
-              onChangeFormattedText={(text) => {
-                setFormattedPhoneNumber(text);
-              }}
-              withDarkTheme={false}
-              withShadow={false}
-              autoFocus={false}
+            <TouchableOpacity
+              style={profileStyles.countryCodeButton}
+              onPress={() => setShowCountryPicker(true)}
               disabled={!isEditing}
-              containerStyle={profileStyles.phoneInput}
-              textContainerStyle={profileStyles.phoneInputTextContainer}
-              textInputStyle={profileStyles.phoneInputText}
-              codeTextStyle={profileStyles.phoneInputCodeText}
+            >
+              <Text style={profileStyles.countryFlag}>{countryFlag}</Text>
+              <Text style={profileStyles.countryCodeText}>{countryCode}</Text>
+            </TouchableOpacity>
+            <TextInput
+              style={profileStyles.phoneInputText}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              placeholder="Phone number"
+              keyboardType="phone-pad"
+              editable={isEditing}
+              placeholderTextColor="#999"
             />
           </View>
+          <CountryPicker
+            show={showCountryPicker}
+            pickerButtonOnPress={(item) => {
+              setCountryCode(item.dial_code);
+              setCountryFlag(item.flag);
+              setShowCountryPicker(false);
+            }}
+            onBackdropPress={() => setShowCountryPicker(false)}
+            lang="en"
+          />
         </View>
 
         {/* Save/Cancel Buttons */}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -7,9 +7,10 @@ import {
   Platform,
   Image,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import PhoneInput from 'react-native-phone-number-input';
+import { CountryPicker } from 'react-native-country-codes-picker';
 import { loginStyles as styles } from './loginStyles';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -27,10 +28,11 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
+  const [countryFlag, setCountryFlag] = useState('🇺🇸');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loginType, setLoginType] = useState<LoginType>('admin');
   const [loading, setLoading] = useState(false);
-  const phoneInput = useRef<PhoneInput>(null);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -139,21 +141,21 @@ export default function LoginScreen() {
         return;
       }
 
-      // Validate phone number using the library
-      const checkValid = phoneInput.current?.isValidNumber(phoneNumber);
-      if (!checkValid || !phoneNumber) {
+      // Basic phone number validation (should have at least 7 digits)
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (digitsOnly.length < 7 || !phoneNumber) {
         showToast('Please enter a valid phone number', 'error');
         return;
       }
 
-      // Use formatted phone number (with country code) from state
-      const formattedValue = formattedPhoneNumber || phoneNumber;
+      // Format phone number with country code
+      const formattedValue = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
 
       setLoading(true);
 
       try {
-        // Check if user exists in database - use formatted number or just the number
-        const phoneToSearch = formattedPhoneNumber || phoneNumber.trim();
+        // Use formatted phone number with country code
+        const phoneToSearch = formattedValue;
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
@@ -298,24 +300,33 @@ export default function LoginScreen() {
               </>
             ) : (
               <View style={styles.phoneInputContainer}>
-                <PhoneInput
-                  ref={phoneInput}
-                  defaultValue={phoneNumber}
-                  defaultCode="US"
-                  layout="first"
-                  onChangeText={(text) => {
-                    setPhoneNumber(text);
+                <Text style={styles.label}>Phone Number</Text>
+                <View style={styles.phoneInputWrapper}>
+                  <TouchableOpacity
+                    style={styles.countryCodeButton}
+                    onPress={() => setShowCountryPicker(true)}
+                  >
+                    <Text style={styles.countryFlag}>{countryFlag}</Text>
+                    <Text style={styles.countryCodeText}>{countryCode}</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.phoneInputText}
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    placeholder="Phone number"
+                    keyboardType="phone-pad"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+                <CountryPicker
+                  show={showCountryPicker}
+                  pickerButtonOnPress={(item) => {
+                    setCountryCode(item.dial_code);
+                    setCountryFlag(item.flag);
+                    setShowCountryPicker(false);
                   }}
-                  onChangeFormattedText={(text) => {
-                    setFormattedPhoneNumber(text);
-                  }}
-                  withDarkTheme={false}
-                  withShadow={false}
-                  autoFocus={false}
-                  containerStyle={styles.phoneInput}
-                  textContainerStyle={styles.phoneInputTextContainer}
-                  textInputStyle={styles.phoneInputText}
-                  codeTextStyle={styles.phoneInputCodeText}
+                  onBackdropPress={() => setShowCountryPicker(false)}
+                  lang="en"
                 />
               </View>
             )}

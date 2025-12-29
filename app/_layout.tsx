@@ -10,13 +10,6 @@ import { LogBox } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import '../src/lib/notifications'; // Import notification handler
 
-// Suppress VirtualizedList warning from react-native-phone-number-input
-// This warning occurs because PhoneInput uses a VirtualizedList internally for country selection
-LogBox.ignoreLogs([
-  'VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead.',
-  /VirtualizedLists should never be nested/,
-]);
-
 function RootLayoutNav() {
   const { session, userProfile, loading } = useAuth();
   const segments = useSegments();
@@ -158,7 +151,11 @@ function RootLayoutNav() {
   }, [session, userProfile, segments, loading]);
 
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
       <Stack.Screen
         name="index"
         options={{
