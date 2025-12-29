@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   Platform,
   ScrollView,
   TouchableWithoutFeedback,
+  TextInput,
 } from 'react-native';
-import PhoneInput from 'react-native-phone-number-input';
+import { CountryPicker } from 'react-native-country-codes-picker';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingBar } from './LoadingBar';
@@ -42,23 +43,35 @@ export const UserModal: React.FC<UserModalProps> = ({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
+  const [countryFlag, setCountryFlag] = useState('🇺🇸');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [email, setEmail] = useState('');
-  const phoneInput = useRef<PhoneInput>(null);
 
   useEffect(() => {
     if (editingUser) {
       setFirstName(editingUser.first_name || '');
       setLastName(editingUser.last_name || '');
       const phone = editingUser.phone_no || '';
-      setPhoneNumber(phone);
-      setFormattedPhoneNumber(phone);
+      // Extract country code and phone number if phone starts with +
+      if (phone.startsWith('+')) {
+        const match = phone.match(/^(\+\d{1,4})(.*)/);
+        if (match) {
+          setCountryCode(match[1]);
+          setPhoneNumber(match[2].trim());
+        } else {
+          setPhoneNumber(phone);
+        }
+      } else {
+        setPhoneNumber(phone);
+      }
     } else {
       // Reset form for new user
       setFirstName('');
       setLastName('');
       setPhoneNumber('');
-      setFormattedPhoneNumber('');
+      setCountryCode('+1');
+      setCountryFlag('🇺🇸');
       setEmail('');
     }
   }, [editingUser, visible]);
@@ -68,14 +81,14 @@ export const UserModal: React.FC<UserModalProps> = ({
       return;
     }
 
-    // Validate phone number using the library
-    const checkValid = phoneInput.current?.isValidNumber(phoneNumber);
-    if (!checkValid || !phoneNumber) {
+    // Basic phone number validation (should have at least 7 digits)
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    if (digitsOnly.length < 7) {
       return;
     }
     
-    // Use formatted phone number (with country code) from state
-    const formattedValue = formattedPhoneNumber || phoneNumber;
+    // Format phone number with country code
+    const formattedValue = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
 
     // Validate email if provided
     if (email) {
@@ -158,25 +171,35 @@ export const UserModal: React.FC<UserModalProps> = ({
                         editable={!loading}
                       />
                       <View style={styles.phoneInputContainer}>
-                        <PhoneInput
-                          ref={phoneInput}
-                          defaultValue={phoneNumber}
-                          defaultCode="US"
-                          layout="first"
-                          onChangeText={(text) => {
-                            setPhoneNumber(text);
+                        <Text style={styles.label}>Phone Number</Text>
+                        <View style={styles.phoneInputWrapper}>
+                          <TouchableOpacity
+                            style={styles.countryCodeButton}
+                            onPress={() => setShowCountryPicker(true)}
+                            disabled={loading}
+                          >
+                            <Text style={styles.countryFlag}>{countryFlag}</Text>
+                            <Text style={styles.countryCodeText}>{countryCode}</Text>
+                          </TouchableOpacity>
+                          <TextInput
+                            style={styles.phoneInputText}
+                            value={phoneNumber}
+                            onChangeText={setPhoneNumber}
+                            placeholder="Phone number"
+                            keyboardType="phone-pad"
+                            editable={!loading}
+                            placeholderTextColor="#999"
+                          />
+                        </View>
+                        <CountryPicker
+                          show={showCountryPicker}
+                          pickerButtonOnPress={(item) => {
+                            setCountryCode(item.dial_code);
+                            setCountryFlag(item.flag);
+                            setShowCountryPicker(false);
                           }}
-                          onChangeFormattedText={(text) => {
-                            setFormattedPhoneNumber(text);
-                          }}
-                          withDarkTheme={false}
-                          withShadow={false}
-                          autoFocus={false}
-                          disabled={loading}
-                          containerStyle={styles.phoneInput}
-                          textContainerStyle={styles.phoneInputTextContainer}
-                          textInputStyle={styles.phoneInputText}
-                          codeTextStyle={styles.phoneInputCodeText}
+                          onBackdropPress={() => setShowCountryPicker(false)}
+                          lang="en"
                         />
                       </View>
                       <Input
@@ -299,26 +322,48 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
   },
-  phoneInput: {
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000',
+    marginBottom: 8,
+  },
+  phoneInputWrapper: {
+    flexDirection: 'row',
     width: '100%',
     height: 48,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 8,
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-  phoneInputTextContainer: {
-    backgroundColor: '#fff',
-    paddingVertical: 0,
+  countryCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: '100%',
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    backgroundColor: '#f9f9f9',
+  },
+  countryFlag: {
+    fontSize: 20,
+    marginRight: 6,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
   },
   phoneInputText: {
+    flex: 1,
     fontSize: 16,
     color: '#000',
+    paddingHorizontal: 12,
     paddingVertical: 0,
-  },
-  phoneInputCodeText: {
-    fontSize: 16,
-    color: '#000',
+    height: '100%',
   },
 });
 
