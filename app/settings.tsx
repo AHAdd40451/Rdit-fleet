@@ -802,9 +802,9 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 8,
+    // paddingHorizontal: 20,
+    // paddingTop: 8,
+    // paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
