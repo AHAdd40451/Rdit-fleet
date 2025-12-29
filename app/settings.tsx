@@ -54,6 +54,12 @@ export default function SettingsScreen() {
   const [companyName, setCompanyName] = useState('');
   const [country, setCountry] = useState('');
   const [state, setState] = useState('');
+  const [legalName, setLegalName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [timezone, setTimezone] = useState('');
+  const [units, setUnits] = useState<'imperial' | 'metric'>('imperial');
   const [companyLoading, setCompanyLoading] = useState(false);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const [loadingCompanyData, setLoadingCompanyData] = useState(true);
@@ -82,7 +88,7 @@ export default function SettingsScreen() {
       try {
         const { data: companyData, error } = await supabase
           .from('company')
-          .select('company_name, country, state')
+          .select('company_name, country, state, legal_name, phone, support_email, address, timezone, units')
           .eq('user_id', session.user.id)
           .single();
 
@@ -94,6 +100,12 @@ export default function SettingsScreen() {
           setCompanyName(companyData.company_name || '');
           setCountry(companyData.country || '');
           setState(companyData.state || '');
+          setLegalName(companyData.legal_name || '');
+          setPhone(companyData.phone || '');
+          setSupportEmail(companyData.support_email || '');
+          setAddress(companyData.address || '');
+          setTimezone(companyData.timezone || '');
+          setUnits(companyData.units || 'imperial');
         }
       } catch (error) {
         console.error('Error fetching company data:', error);
@@ -211,6 +223,14 @@ export default function SettingsScreen() {
       return;
     }
 
+    if (supportEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(supportEmail.trim())) {
+        showToast('Please enter a valid support email address', 'error');
+        return;
+      }
+    }
+
     if (!session?.user?.id) {
       showToast('User not authenticated', 'error');
       return;
@@ -231,6 +251,12 @@ export default function SettingsScreen() {
         company_name: companyName.trim(),
         country: country.trim(),
         ...(state.trim() && { state: state.trim() }),
+        ...(legalName.trim() && { legal_name: legalName.trim() }),
+        ...(phone.trim() && { phone: phone.trim() }),
+        ...(supportEmail.trim() && { support_email: supportEmail.trim() }),
+        ...(address.trim() && { address: address.trim() }),
+        ...(timezone.trim() && { timezone: timezone.trim() }),
+        ...(units && { units: units }),
       };
 
       if (existingCompany) {
@@ -276,7 +302,7 @@ export default function SettingsScreen() {
       try {
         const { data: companyData, error } = await supabase
           .from('company')
-          .select('company_name, country, state')
+          .select('company_name, country, state, legal_name, phone, support_email, address, timezone, units')
           .eq('user_id', session.user.id)
           .single();
 
@@ -284,6 +310,12 @@ export default function SettingsScreen() {
           setCompanyName(companyData.company_name || '');
           setCountry(companyData.country || '');
           setState(companyData.state || '');
+          setLegalName(companyData.legal_name || '');
+          setPhone(companyData.phone || '');
+          setSupportEmail(companyData.support_email || '');
+          setAddress(companyData.address || '');
+          setTimezone(companyData.timezone || '');
+          setUnits(companyData.units || 'imperial');
         }
       } catch (error) {
         console.error('Error fetching company data:', error);
@@ -526,6 +558,113 @@ export default function SettingsScreen() {
               autoCapitalize="words"
               style={styles.input}
             />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Legal Name (Optional)</Text>
+            <Input
+              placeholder="Enter legal company name"
+              value={legalName}
+              onChangeText={setLegalName}
+              editable={isEditingCompany}
+              autoCapitalize="words"
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Phone (Optional)</Text>
+            <Input
+              placeholder="Enter company phone number"
+              value={phone}
+              onChangeText={setPhone}
+              editable={isEditingCompany}
+              keyboardType="phone-pad"
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Support Email (Optional)</Text>
+            <Input
+              placeholder="Enter support email address"
+              value={supportEmail}
+              onChangeText={setSupportEmail}
+              editable={isEditingCompany}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Address (Optional)</Text>
+            <Input
+              placeholder="Enter company address"
+              value={address}
+              onChangeText={setAddress}
+              editable={isEditingCompany}
+              autoCapitalize="words"
+              multiline
+              numberOfLines={3}
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Timezone (Optional)</Text>
+            <Input
+              placeholder="Enter timezone (e.g., America/New_York)"
+              value={timezone}
+              onChangeText={setTimezone}
+              editable={isEditingCompany}
+              autoCapitalize="none"
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Units *</Text>
+            <View style={styles.unitsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.unitButton,
+                  units === 'imperial' && styles.unitButtonActive,
+                  !isEditingCompany && styles.unitButtonDisabled,
+                ]}
+                onPress={() => isEditingCompany && setUnits('imperial')}
+                disabled={!isEditingCompany}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.unitButtonText,
+                    units === 'imperial' && styles.unitButtonTextActive,
+                  ]}
+                >
+                  Imperial
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.unitButton,
+                  units === 'metric' && styles.unitButtonActive,
+                  !isEditingCompany && styles.unitButtonDisabled,
+                ]}
+                onPress={() => isEditingCompany && setUnits('metric')}
+                disabled={!isEditingCompany}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.unitButtonText,
+                    units === 'metric' && styles.unitButtonTextActive,
+                  ]}
+                >
+                  Metric
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Save/Cancel Buttons */}
@@ -798,6 +937,38 @@ const styles = StyleSheet.create({
   phoneInputCodeText: {
     fontSize: 16,
     color: '#000',
+  },
+  unitsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  unitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitButtonActive: {
+    borderColor: TEAL_GREEN,
+    backgroundColor: TEAL_GREEN,
+  },
+  unitButtonDisabled: {
+    opacity: 0.6,
+  },
+  unitButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  unitButtonTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 

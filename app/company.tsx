@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
@@ -24,6 +25,12 @@ export default function CompanySetupScreen() {
   const [companyName, setCompanyName] = useState('');
   const [country, setCountry] = useState('');
   const [state, setState] = useState('');
+  const [legalName, setLegalName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [timezone, setTimezone] = useState('');
+  const [units, setUnits] = useState<'imperial' | 'metric'>('imperial');
   const [loading, setLoading] = useState(false);
   const [checkingCompany, setCheckingCompany] = useState(true);
 
@@ -95,6 +102,14 @@ export default function CompanySetupScreen() {
       return;
     }
 
+    if (supportEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(supportEmail.trim())) {
+        showToast('Please enter a valid support email address', 'error');
+        return;
+      }
+    }
+
     if (!user?.id) {
       showToast('User not authenticated', 'error');
       return;
@@ -108,6 +123,12 @@ export default function CompanySetupScreen() {
         company_name: companyName.trim(),
         country: country.trim(),
         ...(state.trim() && { state: state.trim() }),
+        ...(legalName.trim() && { legal_name: legalName.trim() }),
+        ...(phone.trim() && { phone: phone.trim() }),
+        ...(supportEmail.trim() && { support_email: supportEmail.trim() }),
+        ...(address.trim() && { address: address.trim() }),
+        ...(timezone.trim() && { timezone: timezone.trim() }),
+        units: units,
       };
 
       const { error } = await supabase
@@ -191,6 +212,93 @@ export default function CompanySetupScreen() {
                   autoCapitalize="words"
                   placeholder="Enter state or province"
                 />
+                <Input
+                  variant="text"
+                  label="Legal Name (Optional)"
+                  value={legalName}
+                  onChangeText={setLegalName}
+                  style={styles.input}
+                  autoCapitalize="words"
+                  placeholder="Enter legal company name"
+                />
+                <Input
+                  variant="text"
+                  label="Phone (Optional)"
+                  value={phone}
+                  onChangeText={setPhone}
+                  style={styles.input}
+                  keyboardType="phone-pad"
+                  placeholder="Enter company phone number"
+                />
+                <Input
+                  variant="text"
+                  label="Support Email (Optional)"
+                  value={supportEmail}
+                  onChangeText={setSupportEmail}
+                  style={styles.input}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholder="Enter support email address"
+                />
+                <Input
+                  variant="text"
+                  label="Address (Optional)"
+                  value={address}
+                  onChangeText={setAddress}
+                  style={styles.input}
+                  autoCapitalize="words"
+                  multiline
+                  numberOfLines={3}
+                  placeholder="Enter company address"
+                />
+                <Input
+                  variant="text"
+                  label="Timezone (Optional)"
+                  value={timezone}
+                  onChangeText={setTimezone}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  placeholder="Enter timezone (e.g., America/New_York)"
+                />
+                <View style={styles.unitsContainer}>
+                  <Text style={styles.unitsLabel}>Units *</Text>
+                  <View style={styles.unitsButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.unitButton,
+                        units === 'imperial' && styles.unitButtonActive,
+                      ]}
+                      onPress={() => setUnits('imperial')}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.unitButtonText,
+                          units === 'imperial' && styles.unitButtonTextActive,
+                        ]}
+                      >
+                        Imperial
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.unitButton,
+                        units === 'metric' && styles.unitButtonActive,
+                      ]}
+                      onPress={() => setUnits('metric')}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.unitButtonText,
+                          units === 'metric' && styles.unitButtonTextActive,
+                        ]}
+                      >
+                        Metric
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
 
               <View style={styles.formButtonsContainer}>
@@ -278,6 +386,43 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     marginBottom: 12,
+  },
+  unitsContainer: {
+    marginBottom: 16,
+  },
+  unitsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  unitsButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  unitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitButtonActive: {
+    borderColor: '#14AB98',
+    backgroundColor: '#14AB98',
+  },
+  unitButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  unitButtonTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 
