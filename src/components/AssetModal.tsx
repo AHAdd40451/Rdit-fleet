@@ -29,6 +29,7 @@ interface Asset {
   mileage: number | null;
   user_id: string;
   photo?: string | null;
+  state?: string | null;
 }
 
 interface AssetModalProps {
@@ -54,12 +55,16 @@ export const AssetModal: React.FC<AssetModalProps> = ({
   const [year, setYear] = useState('');
   const [odometer, setOdometer] = useState('');
   const [mileage, setMileage] = useState('');
+  const [state, setState] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [showStatePicker, setShowStatePicker] = useState(false);
   const [errors, setErrors] = useState<{
     vin?: string;
     mileage?: string;
     odometer?: string;
   }>({});
+
+  const states = ['FL', 'TX', 'CA', 'NY', 'GA'];
 
   useEffect(() => {
     if (editingAsset) {
@@ -71,6 +76,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       setYear(editingAsset.year?.toString() || '');
       setOdometer(editingAsset.odometer?.toString() || '');
       setMileage(editingAsset.mileage?.toString() || '');
+      setState(editingAsset.state || '');
       // Photo is not loaded from database, always start fresh
       setPhotoUri(null);
       setErrors({});
@@ -84,6 +90,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       setYear('');
       setOdometer('');
       setMileage('');
+      setState('');
       setPhotoUri(null);
       setErrors({});
     }
@@ -169,6 +176,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
       year: year ? parseInt(year, 10) : null,
       odometer: odometer ? parseInt(odometer, 10) : null,
       mileage: mileage ? parseInt(mileage, 10) : null,
+      state: state || null,
     };
 
     await onSave(assetData);
@@ -295,6 +303,19 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         editable={!loading}
                         placeholder="Enter color"
                       />
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.dropdownLabel}>State</Text>
+                        <TouchableOpacity
+                          style={styles.dropdownButton}
+                          onPress={() => setShowStatePicker(true)}
+                          disabled={loading}
+                        >
+                          <Text style={[styles.dropdownButtonText, !state && styles.dropdownPlaceholder]}>
+                            {state || 'Select state'}
+                          </Text>
+                          <Text style={styles.dropdownArrow}>▼</Text>
+                        </TouchableOpacity>
+                      </View>
                       <View>
                         <Input
                           variant="text"
@@ -399,6 +420,59 @@ export const AssetModal: React.FC<AssetModalProps> = ({
           </View>
         </View>
       </KeyboardAvoidingView>
+      
+      {/* State Picker Modal */}
+      <Modal
+        visible={showStatePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStatePicker(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowStatePicker(false)}>
+          <View style={styles.pickerModalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.pickerModalContent}>
+                <View style={styles.pickerHeader}>
+                  <Text style={styles.pickerTitle}>Select State</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowStatePicker(false)}
+                    style={styles.pickerCloseButton}
+                  >
+                    <Text style={styles.pickerCloseButtonText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.pickerScrollView}>
+                  {states.map((stateOption) => (
+                    <TouchableOpacity
+                      key={stateOption}
+                      style={[
+                        styles.pickerOption,
+                        state === stateOption && styles.pickerOptionSelected,
+                      ]}
+                      onPress={() => {
+                        setState(stateOption);
+                        setShowStatePicker(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerOptionText,
+                          state === stateOption && styles.pickerOptionTextSelected,
+                        ]}
+                      >
+                        {stateOption}
+                      </Text>
+                      {state === stateOption && (
+                        <Text style={styles.pickerCheckmark}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </Modal>
   );
 };
@@ -548,6 +622,108 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 8,
     marginLeft: 4,
+  },
+  dropdownLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingTop: 14,
+    paddingRight: 12,
+    paddingBottom: 14,
+    paddingLeft: 12,
+    marginBottom: 16,
+  },
+  dropdownButtonText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+  },
+  dropdownPlaceholder: {
+    color: '#999',
+  },
+  dropdownArrow: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  pickerModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '70%',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  pickerCloseButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+  },
+  pickerCloseButtonText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  pickerScrollView: {
+    maxHeight: 300,
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  pickerOptionSelected: {
+    backgroundColor: '#f0f8f6',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  pickerOptionTextSelected: {
+    color: '#14AB98',
+    fontWeight: '600',
+  },
+  pickerCheckmark: {
+    fontSize: 18,
+    color: '#14AB98',
+    fontWeight: 'bold',
   },
 });
 

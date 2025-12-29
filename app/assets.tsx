@@ -39,6 +39,7 @@ interface Asset {
   user_id: string;
   photo?: string | null;
   photos?: string[] | null;
+  state?: string | null;
 }
 
 export default function AssetsScreen() {

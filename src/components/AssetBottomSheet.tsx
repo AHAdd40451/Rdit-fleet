@@ -37,6 +37,7 @@ interface Asset {
   created_at?: string;
   photo?: string | null;
   photos?: string[] | null;
+  state?: string | null;
 }
 
 interface AssetBottomSheetProps {

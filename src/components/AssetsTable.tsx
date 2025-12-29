@@ -26,6 +26,7 @@ interface Asset {
   mileage: number;
   user_id: string;
   created_at: string;
+  state?: string | null;
 }
 
 interface AssetsTableProps {
