@@ -247,12 +247,12 @@ export default function NotificationDetailScreen() {
           </View>
 
           {/* Asset ID (if available) */}
-          {notification.asset_id && (
+          {/* {notification.asset_id && (
             <View style={styles.assetSection}>
               <Text style={styles.assetLabel}>Related Asset ID</Text>
               <Text style={styles.assetId}>{notification.asset_id}</Text>
             </View>
-          )}
+          )} */}
         </View>
 
         {/* Action Buttons */}
