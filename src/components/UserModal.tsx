@@ -9,9 +9,8 @@ import {
   Platform,
   ScrollView,
   TouchableWithoutFeedback,
-  TextInput,
 } from 'react-native';
-import { CountryPicker } from 'react-native-country-codes-picker';
+import PhoneInput, { ICountry, getCountryByCca2 } from 'react-native-international-phone-number';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingBar } from './LoadingBar';
@@ -43,35 +42,106 @@ export const UserModal: React.FC<UserModalProps> = ({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+1');
-  const [countryFlag, setCountryFlag] = useState('🇺🇸');
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [email, setEmail] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('PK'));
+
+  // Helper function to get country code from phone number
+  const getCountryCodeFromPhone = (phone: string): string => {
+    if (!phone.startsWith('+')) {
+      return 'PK'; // Default to Pakistan
+    }
+    
+    // Try to match country codes (longest first to avoid conflicts)
+    if (phone.startsWith('+971')) return 'AE'; // UAE
+    if (phone.startsWith('+966')) return 'SA'; // Saudi Arabia
+    if (phone.startsWith('+974')) return 'QA'; // Qatar
+    if (phone.startsWith('+965')) return 'KW'; // Kuwait
+    if (phone.startsWith('+973')) return 'BH'; // Bahrain
+    if (phone.startsWith('+968')) return 'OM'; // Oman
+    if (phone.startsWith('+961')) return 'LB'; // Lebanon
+    if (phone.startsWith('+962')) return 'JO'; // Jordan
+    if (phone.startsWith('+92')) return 'PK'; // Pakistan
+    if (phone.startsWith('+91')) return 'IN'; // India
+    if (phone.startsWith('+86')) return 'CN'; // China
+    if (phone.startsWith('+81')) return 'JP'; // Japan
+    if (phone.startsWith('+49')) return 'DE'; // Germany
+    if (phone.startsWith('+44')) return 'GB'; // UK
+    if (phone.startsWith('+39')) return 'IT'; // Italy
+    if (phone.startsWith('+34')) return 'ES'; // Spain
+    if (phone.startsWith('+33')) return 'FR'; // France
+    if (phone.startsWith('+61')) return 'AU'; // Australia
+    if (phone.startsWith('+55')) return 'BR'; // Brazil
+    if (phone.startsWith('+27')) return 'ZA'; // South Africa
+    if (phone.startsWith('+20')) return 'EG'; // Egypt
+    if (phone.startsWith('+7')) return 'RU'; // Russia
+    if (phone.startsWith('+1')) return 'US'; // US/Canada
+    
+    return 'PK'; // Default
+  };
+
+  // Helper function to extract phone number without country code
+  const extractPhoneNumber = (phone: string): string => {
+    if (!phone.startsWith('+')) {
+      return phone;
+    }
+    
+    // Remove country codes (try longest first)
+    const patterns = [
+      /^\+971/,  // UAE
+      /^\+966/,  // Saudi Arabia
+      /^\+974/,  // Qatar
+      /^\+965/,  // Kuwait
+      /^\+973/,  // Bahrain
+      /^\+968/,  // Oman
+      /^\+961/,  // Lebanon
+      /^\+962/,  // Jordan
+      /^\+92/,   // Pakistan
+      /^\+91/,   // India
+      /^\+86/,   // China
+      /^\+81/,   // Japan
+      /^\+49/,   // Germany
+      /^\+44/,   // UK
+      /^\+39/,   // Italy
+      /^\+34/,   // Spain
+      /^\+33/,   // France
+      /^\+61/,   // Australia
+      /^\+55/,   // Brazil
+      /^\+27/,   // South Africa
+      /^\+20/,   // Egypt
+      /^\+1/,    // US/Canada
+      /^\+7/,    // Russia
+    ];
+    
+    for (const pattern of patterns) {
+      if (pattern.test(phone)) {
+        return phone.replace(pattern, '').trim();
+      }
+    }
+    
+    // Fallback: try to remove first 1-4 digits after +
+    const match = phone.match(/^\+\d{1,4}(.*)/);
+    if (match) {
+      return match[1].trim();
+    }
+    
+    return phone;
+  };
 
   useEffect(() => {
     if (editingUser) {
       setFirstName(editingUser.first_name || '');
       setLastName(editingUser.last_name || '');
       const phone = editingUser.phone_no || '';
-      // Extract country code and phone number if phone starts with +
-      if (phone.startsWith('+')) {
-        const match = phone.match(/^(\+\d{1,4})(.*)/);
-        if (match) {
-          setCountryCode(match[1]);
-          setPhoneNumber(match[2].trim());
-        } else {
-          setPhoneNumber(phone);
-        }
-      } else {
-        setPhoneNumber(phone);
-      }
+      const countryCode = getCountryCodeFromPhone(phone);
+      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('PK'));
+      setPhoneNumber(extractPhoneNumber(phone));
+      setEmail(editingUser.email || '');
     } else {
       // Reset form for new user
       setFirstName('');
       setLastName('');
       setPhoneNumber('');
-      setCountryCode('+1');
-      setCountryFlag('🇺🇸');
+      setSelectedCountry(getCountryByCca2('PK'));
       setEmail('');
     }
   }, [editingUser, visible]);
@@ -81,14 +151,15 @@ export const UserModal: React.FC<UserModalProps> = ({
       return;
     }
 
-    // Basic phone number validation (should have at least 7 digits)
+    // Construct phone number with country code
     const digitsOnly = phoneNumber.replace(/\D/g, '');
+    const callingCode = (selectedCountry as any)?.callingCode || (selectedCountry as any)?.dialCode || '92';
+    const formattedValue = `+${callingCode}${digitsOnly}`;
+
+    // Basic validation - ensure phone has at least some digits
     if (digitsOnly.length < 7) {
       return;
     }
-    
-    // Format phone number with country code
-    const formattedValue = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
 
     // Validate email if provided
     if (email) {
@@ -101,7 +172,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     const userData: Omit<User, 'id'> = {
       first_name: firstName.trim(),
       last_name: lastName.trim(),
-      phone_no: formattedValue.trim(),
+      phone_no: formattedValue,
       role: editingUser?.role || 'user',
     };
 
@@ -171,35 +242,52 @@ export const UserModal: React.FC<UserModalProps> = ({
                         editable={!loading}
                       />
                       <View style={styles.phoneInputContainer}>
-                        <Text style={styles.label}>Phone Number</Text>
-                        <View style={styles.phoneInputWrapper}>
-                          <TouchableOpacity
-                            style={styles.countryCodeButton}
-                            onPress={() => setShowCountryPicker(true)}
-                            disabled={loading}
-                          >
-                            <Text style={styles.countryFlag}>{countryFlag}</Text>
-                            <Text style={styles.countryCodeText}>{countryCode}</Text>
-                          </TouchableOpacity>
-                          <TextInput
-                            style={styles.phoneInputText}
-                            value={phoneNumber}
-                            onChangeText={setPhoneNumber}
-                            placeholder="Phone number"
-                            keyboardType="phone-pad"
-                            editable={!loading}
-                            placeholderTextColor="#999"
-                          />
-                        </View>
-                        <CountryPicker
-                          show={showCountryPicker}
-                          pickerButtonOnPress={(item) => {
-                            setCountryCode(item.dial_code);
-                            setCountryFlag(item.flag);
-                            setShowCountryPicker(false);
+                        <PhoneInput
+                          value={phoneNumber}
+                          onChangePhoneNumber={setPhoneNumber}
+                          selectedCountry={selectedCountry}
+                          onChangeSelectedCountry={setSelectedCountry}
+                          disabled={loading}
+                          phoneInputStyles={{
+                            container: {
+                              minHeight: 48,
+                              backgroundColor: '#fff',
+                              borderWidth: 1,
+                              borderColor: '#E0E0E0',
+                              borderRadius: 8,
+                              paddingTop: 14,
+                              paddingRight: 12,
+                              paddingBottom: 14,
+                              paddingLeft: 12,
+                            },
+                            flagContainer: {
+                              backgroundColor: 'transparent',
+                              paddingRight: 8,
+                            },
+                            flag: {
+                              fontSize: 20,
+                            },
+                            caret: {
+                              color: '#000',
+                              fontSize: 16,
+                            },
+                            divider: {
+                              backgroundColor: '#E0E0E0',
+                              width: 1,
+                              marginHorizontal: 8,
+                            },
+                            callingCode: {
+                              fontSize: 16,
+                              color: '#000',
+                              fontWeight: '400',
+                            },
+                            input: {
+                              fontSize: 16,
+                              color: '#000',
+                              flex: 1,
+                            },
                           }}
-                          onBackdropPress={() => setShowCountryPicker(false)}
-                          lang="en"
+                          placeholder="Phone Number"
                         />
                       </View>
                       <Input
@@ -264,12 +352,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
+    paddingBottom: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     width: '100%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -297,9 +387,11 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+    overflow: 'hidden',
   },
   inputContainer: {
     width: '100%',
+    overflow: 'hidden',
   },
   input: {
     marginBottom: 16,
@@ -321,49 +413,6 @@ const styles = StyleSheet.create({
   phoneInputContainer: {
     width: '100%',
     marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 8,
-  },
-  phoneInputWrapper: {
-    flexDirection: 'row',
-    width: '100%',
-    height: 48,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  countryCodeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: '100%',
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-    backgroundColor: '#f9f9f9',
-  },
-  countryFlag: {
-    fontSize: 20,
-    marginRight: 6,
-  },
-  countryCodeText: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: '500',
-  },
-  phoneInputText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000',
-    paddingHorizontal: 12,
-    paddingVertical: 0,
-    height: '100%',
   },
 });
 

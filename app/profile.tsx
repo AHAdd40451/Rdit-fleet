@@ -9,14 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  TextInput,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { CountryPicker } from 'react-native-country-codes-picker';
+import PhoneInput, { ICountry, getCountryByCca2 } from 'react-native-international-phone-number';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
@@ -37,9 +36,7 @@ export default function ProfileScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+1');
-  const [countryFlag, setCountryFlag] = useState('🇺🇸');
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('PK'));
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -51,18 +48,53 @@ export default function ProfileScreen() {
       setLastName(userProfile.last_name || '');
       setEmail(userProfile.email || '');
       const phone = userProfile.phone_no || '';
-      // Extract country code and phone number if phone starts with +
-      if (phone.startsWith('+')) {
-        const match = phone.match(/^(\+\d{1,4})(.*)/);
-        if (match) {
-          setCountryCode(match[1]);
-          setPhoneNumber(match[2].trim());
-        } else {
-          setPhoneNumber(phone);
+      // Helper function to get country code from phone number
+      const getCountryCodeFromPhone = (phone: string): string => {
+        if (!phone.startsWith('+')) return 'PK';
+        if (phone.startsWith('+971')) return 'AE';
+        if (phone.startsWith('+966')) return 'SA';
+        if (phone.startsWith('+974')) return 'QA';
+        if (phone.startsWith('+965')) return 'KW';
+        if (phone.startsWith('+973')) return 'BH';
+        if (phone.startsWith('+968')) return 'OM';
+        if (phone.startsWith('+961')) return 'LB';
+        if (phone.startsWith('+962')) return 'JO';
+        if (phone.startsWith('+92')) return 'PK';
+        if (phone.startsWith('+91')) return 'IN';
+        if (phone.startsWith('+86')) return 'CN';
+        if (phone.startsWith('+81')) return 'JP';
+        if (phone.startsWith('+49')) return 'DE';
+        if (phone.startsWith('+44')) return 'GB';
+        if (phone.startsWith('+39')) return 'IT';
+        if (phone.startsWith('+34')) return 'ES';
+        if (phone.startsWith('+33')) return 'FR';
+        if (phone.startsWith('+61')) return 'AU';
+        if (phone.startsWith('+55')) return 'BR';
+        if (phone.startsWith('+27')) return 'ZA';
+        if (phone.startsWith('+20')) return 'EG';
+        if (phone.startsWith('+7')) return 'RU';
+        if (phone.startsWith('+1')) return 'US';
+        return 'PK';
+      };
+      // Helper function to extract phone number without country code
+      const extractPhoneNumber = (phone: string): string => {
+        if (!phone.startsWith('+')) return phone;
+        const patterns = [
+          /^\+971/, /^\+966/, /^\+974/, /^\+965/, /^\+973/, /^\+968/, /^\+961/, /^\+962/,
+          /^\+92/, /^\+91/, /^\+86/, /^\+81/, /^\+49/, /^\+44/, /^\+39/, /^\+34/, /^\+33/,
+          /^\+61/, /^\+55/, /^\+27/, /^\+20/, /^\+1/, /^\+7/,
+        ];
+        for (const pattern of patterns) {
+          if (pattern.test(phone)) {
+            return phone.replace(pattern, '').trim();
+          }
         }
-      } else {
-        setPhoneNumber(phone);
-      }
+        const match = phone.match(/^\+\d{1,4}(.*)/);
+        return match ? match[1].trim() : phone;
+      };
+      const countryCode = getCountryCodeFromPhone(phone);
+      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('PK'));
+      setPhoneNumber(extractPhoneNumber(phone));
       console.log('userProfile.avatar_url', userProfile);
       // Load profile image URL if it exists, otherwise reset to null
       if (userProfile.avatar_url && userProfile.avatar_url.trim() !== '') {
@@ -178,18 +210,51 @@ export default function ProfileScreen() {
         setLastName(userProfile.last_name || '');
         setEmail(userProfile.email || '');
         const phone = userProfile.phone_no || '';
-        // Extract country code and phone number if phone starts with +
-        if (phone.startsWith('+')) {
-          const match = phone.match(/^(\+\d{1,4})(.*)/);
-          if (match) {
-            setCountryCode(match[1]);
-            setPhoneNumber(match[2].trim());
-          } else {
-            setPhoneNumber(phone);
+        const getCountryCodeFromPhone = (phone: string): string => {
+          if (!phone.startsWith('+')) return 'PK';
+          if (phone.startsWith('+971')) return 'AE';
+          if (phone.startsWith('+966')) return 'SA';
+          if (phone.startsWith('+974')) return 'QA';
+          if (phone.startsWith('+965')) return 'KW';
+          if (phone.startsWith('+973')) return 'BH';
+          if (phone.startsWith('+968')) return 'OM';
+          if (phone.startsWith('+961')) return 'LB';
+          if (phone.startsWith('+962')) return 'JO';
+          if (phone.startsWith('+92')) return 'PK';
+          if (phone.startsWith('+91')) return 'IN';
+          if (phone.startsWith('+86')) return 'CN';
+          if (phone.startsWith('+81')) return 'JP';
+          if (phone.startsWith('+49')) return 'DE';
+          if (phone.startsWith('+44')) return 'GB';
+          if (phone.startsWith('+39')) return 'IT';
+          if (phone.startsWith('+34')) return 'ES';
+          if (phone.startsWith('+33')) return 'FR';
+          if (phone.startsWith('+61')) return 'AU';
+          if (phone.startsWith('+55')) return 'BR';
+          if (phone.startsWith('+27')) return 'ZA';
+          if (phone.startsWith('+20')) return 'EG';
+          if (phone.startsWith('+7')) return 'RU';
+          if (phone.startsWith('+1')) return 'US';
+          return 'PK';
+        };
+        const extractPhoneNumber = (phone: string): string => {
+          if (!phone.startsWith('+')) return phone;
+          const patterns = [
+            /^\+971/, /^\+966/, /^\+974/, /^\+965/, /^\+973/, /^\+968/, /^\+961/, /^\+962/,
+            /^\+92/, /^\+91/, /^\+86/, /^\+81/, /^\+49/, /^\+44/, /^\+39/, /^\+34/, /^\+33/,
+            /^\+61/, /^\+55/, /^\+27/, /^\+20/, /^\+1/, /^\+7/,
+          ];
+          for (const pattern of patterns) {
+            if (pattern.test(phone)) {
+              return phone.replace(pattern, '').trim();
+            }
           }
-        } else {
-          setPhoneNumber(phone);
-        }
+          const match = phone.match(/^\+\d{1,4}(.*)/);
+          return match ? match[1].trim() : phone;
+        };
+        const countryCode = getCountryCodeFromPhone(phone);
+        setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('PK'));
+        setPhoneNumber(extractPhoneNumber(phone));
       }
       setIsEditing(false);
   };
@@ -422,35 +487,52 @@ export default function ProfileScreen() {
         </View>
 
         <View style={profileStyles.inputContainer}>
-          <Text style={profileStyles.label}>Phone Number</Text>
-          <View style={profileStyles.phoneInputWrapper}>
-            <TouchableOpacity
-              style={profileStyles.countryCodeButton}
-              onPress={() => setShowCountryPicker(true)}
-              disabled={!isEditing}
-            >
-              <Text style={profileStyles.countryFlag}>{countryFlag}</Text>
-              <Text style={profileStyles.countryCodeText}>{countryCode}</Text>
-            </TouchableOpacity>
-            <TextInput
-              style={profileStyles.phoneInputText}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              placeholder="Phone number"
-              keyboardType="phone-pad"
-              editable={isEditing}
-              placeholderTextColor="#999"
-            />
-          </View>
-          <CountryPicker
-            show={showCountryPicker}
-            pickerButtonOnPress={(item) => {
-              setCountryCode(item.dial_code);
-              setCountryFlag(item.flag);
-              setShowCountryPicker(false);
+          <PhoneInput
+            value={phoneNumber}
+            onChangePhoneNumber={setPhoneNumber}
+            selectedCountry={selectedCountry}
+            onChangeSelectedCountry={setSelectedCountry}
+            disabled={!isEditing}
+            phoneInputStyles={{
+              container: {
+                minHeight: 48,
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#E0E0E0',
+                borderRadius: 8,
+                paddingTop: 14,
+                paddingRight: 12,
+                paddingBottom: 14,
+                paddingLeft: 12,
+              },
+              flagContainer: {
+                backgroundColor: 'transparent',
+                paddingRight: 8,
+              },
+              flag: {
+                fontSize: 20,
+              },
+              caret: {
+                color: '#000',
+                fontSize: 16,
+              },
+              divider: {
+                backgroundColor: '#E0E0E0',
+                width: 1,
+                marginHorizontal: 8,
+              },
+              callingCode: {
+                fontSize: 16,
+                color: '#000',
+                fontWeight: '400',
+              },
+              input: {
+                fontSize: 16,
+                color: '#000',
+                flex: 1,
+              },
             }}
-            onBackdropPress={() => setShowCountryPicker(false)}
-            lang="en"
+            placeholder="Phone Number"
           />
         </View>
 

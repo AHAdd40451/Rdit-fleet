@@ -7,10 +7,9 @@ import {
   Platform,
   Image,
   ScrollView,
-  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CountryPicker } from 'react-native-country-codes-picker';
+import PhoneInput, { ICountry, getCountryByCca2 } from 'react-native-international-phone-number';
 import { loginStyles as styles } from './loginStyles';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -28,9 +27,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+1');
-  const [countryFlag, setCountryFlag] = useState('🇺🇸');
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('PK'));
   const [loginType, setLoginType] = useState<LoginType>('admin');
   const [loading, setLoading] = useState(false);
 
@@ -149,7 +146,8 @@ export default function LoginScreen() {
       }
 
       // Format phone number with country code
-      const formattedValue = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
+      const callingCode = (selectedCountry as any)?.callingCode || (selectedCountry as any)?.dialCode || '92';
+      const formattedValue = `+${callingCode}${digitsOnly}`;
 
       setLoading(true);
 
@@ -300,33 +298,51 @@ export default function LoginScreen() {
               </>
             ) : (
               <View style={styles.phoneInputContainer}>
-                <Text style={styles.label}>Phone Number</Text>
-                <View style={styles.phoneInputWrapper}>
-                  <TouchableOpacity
-                    style={styles.countryCodeButton}
-                    onPress={() => setShowCountryPicker(true)}
-                  >
-                    <Text style={styles.countryFlag}>{countryFlag}</Text>
-                    <Text style={styles.countryCodeText}>{countryCode}</Text>
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.phoneInputText}
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    placeholder="Phone number"
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#999"
-                  />
-                </View>
-                <CountryPicker
-                  show={showCountryPicker}
-                  pickerButtonOnPress={(item) => {
-                    setCountryCode(item.dial_code);
-                    setCountryFlag(item.flag);
-                    setShowCountryPicker(false);
+                <PhoneInput
+                  value={phoneNumber}
+                  onChangePhoneNumber={setPhoneNumber}
+                  selectedCountry={selectedCountry}
+                  onChangeSelectedCountry={setSelectedCountry}
+                  phoneInputStyles={{
+                    container: {
+                      minHeight: 48,
+                      backgroundColor: '#fff',
+                      borderWidth: 1,
+                      borderColor: '#E0E0E0',
+                      borderRadius: 8,
+                      paddingTop: 14,
+                      paddingRight: 12,
+                      paddingBottom: 14,
+                      paddingLeft: 12,
+                    },
+                    flagContainer: {
+                      backgroundColor: 'transparent',
+                      paddingRight: 8,
+                    },
+                    flag: {
+                      fontSize: 20,
+                    },
+                    caret: {
+                      color: '#000',
+                      fontSize: 16,
+                    },
+                    divider: {
+                      backgroundColor: '#E0E0E0',
+                      width: 1,
+                      marginHorizontal: 8,
+                    },
+                    callingCode: {
+                      fontSize: 16,
+                      color: '#000',
+                      fontWeight: '400',
+                    },
+                    input: {
+                      fontSize: 16,
+                      color: '#000',
+                      flex: 1,
+                    },
                   }}
-                  onBackdropPress={() => setShowCountryPicker(false)}
-                  lang="en"
+                  placeholder="Phone Number"
                 />
               </View>
             )}
