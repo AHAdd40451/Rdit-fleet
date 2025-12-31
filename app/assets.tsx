@@ -22,6 +22,7 @@ import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
 import { TopBar } from '../src/components/TopBar';
 import { Sidebar } from '../src/components/Sidebar';
 import { generateUUIDFromString } from '../src/utils/generateUUID';
+import { callRapidFunction } from '../src/utils/callRapidFunction';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -271,6 +272,22 @@ export default function AssetsScreen() {
           // Don't throw error here, asset was updated successfully
         }
 
+        // Call rapid-function edge function if mileage > 5000
+        if (assetData.mileage && assetData.mileage > 5000) {
+          try {
+            await callRapidFunction({
+              asset_id: editingAsset.id,
+              asset_name: assetData.asset_name || editingAsset.asset_name,
+              mileage: assetData.mileage,
+              user_id: currentUserId,
+              user_email: userProfile?.email || user?.email,
+            });
+          } catch (rapidFunctionError) {
+            console.error('Error calling rapid-function:', rapidFunctionError);
+            // Don't throw error here, asset was updated successfully
+          }
+        }
+
         showToast('Asset updated successfully!', 'success', 2000);
       } else {
         // Create new asset - only admins can do this
@@ -351,6 +368,22 @@ export default function AssetsScreen() {
             }
           } catch (notificationErr) {
             console.error('Error in notification creation:', notificationErr);
+            // Don't throw error here, asset was created successfully
+          }
+        }
+
+        // Call rapid-function edge function if mileage > 5000
+        if (assetData.mileage && assetData.mileage > 5000) {
+          try {
+            await callRapidFunction({
+              asset_id: insertedAsset.id,
+              asset_name: assetData.asset_name,
+              mileage: assetData.mileage,
+              user_id: currentUserId,
+              user_email: userProfile?.email || user?.email,
+            });
+          } catch (rapidFunctionError) {
+            console.error('Error calling rapid-function:', rapidFunctionError);
             // Don't throw error here, asset was created successfully
           }
         }
