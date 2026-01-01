@@ -23,9 +23,9 @@ import { extractMileageFromOCR } from '../utils/extractMileageFromOCR';
 // Use dynamic import for better compatibility with Expo modules
 let getTextFromFrame: ((inputString: string, isBase64?: boolean) => Promise<string[]>) | null = null;
 let isLoading = false;
-let loadPromise: Promise<typeof getTextFromFrame> | null = null;
+let loadPromise: Promise<((inputString: string, isBase64?: boolean) => Promise<string[]>) | null> | null = null;
 
-const loadTextRecognition = async (): Promise<typeof getTextFromFrame> => {
+const loadTextRecognition = async (): Promise<((inputString: string, isBase64?: boolean) => Promise<string[]>) | null> => {
   // Return cached function if already loaded
   if (getTextFromFrame) {
     return getTextFromFrame;
@@ -64,7 +64,7 @@ const loadTextRecognition = async (): Promise<typeof getTextFromFrame> => {
       }
       // Check if default export IS the function
       else if (typeof textRecognitionModule.default === 'function') {
-        getTextFromFrame = textRecognitionModule.default;
+        getTextFromFrame = textRecognitionModule.default as unknown as (inputString: string, isBase64?: boolean) => Promise<string[]>;
         console.log('✅ Using default export as function');
         return getTextFromFrame;
       }
@@ -967,6 +967,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
+    marginBottom: 16,
   },
   mileageInputWrapper: {
     flex: 1,
@@ -983,7 +984,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 80,
     height: 48,
-    marginBottom: 16,
+    marginBottom: 0,
   },
   ocrButtonDisabled: {
     backgroundColor: '#ccc',
