@@ -11,11 +11,84 @@ import {
   TouchableWithoutFeedback,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingBar } from './LoadingBar';
+import { extractMileageFromOCR } from '../utils/extractMileageFromOCR';
+
+// Conditionally import TextRecognition - it requires native code
+// Use dynamic import for better compatibility with Expo modules
+let getTextFromFrame: ((inputString: string, isBase64?: boolean) => Promise<string[]>) | null = null;
+let isLoading = false;
+let loadPromise: Promise<typeof getTextFromFrame> | null = null;
+
+const loadTextRecognition = async (): Promise<typeof getTextFromFrame> => {
+  // Return cached function if already loaded
+  if (getTextFromFrame) {
+    return getTextFromFrame;
+  }
+
+  // Return existing promise if already loading
+  if (loadPromise) {
+    return loadPromise;
+  }
+
+  // Start loading
+  loadPromise = (async () => {
+    try {
+      // Use dynamic import for ES modules (works better with Expo autolinking)
+      const textRecognitionModule = await import('expo-text-recognition');
+      
+      // Log module structure for debugging
+      console.log('expo-text-recognition module loaded:', {
+        keys: Object.keys(textRecognitionModule),
+        hasDefault: !!textRecognitionModule.default,
+        defaultKeys: textRecognitionModule.default ? Object.keys(textRecognitionModule.default) : [],
+        getTextFromFrame: typeof textRecognitionModule.getTextFromFrame,
+      });
+      
+      // The package exports getTextFromFrame as a named export
+      if (typeof textRecognitionModule.getTextFromFrame === 'function') {
+        getTextFromFrame = textRecognitionModule.getTextFromFrame;
+        console.log('✅ Found getTextFromFrame as named export');
+        return getTextFromFrame;
+      } 
+      // Check for default export with getTextFromFrame
+      else if (textRecognitionModule.default && typeof textRecognitionModule.default.getTextFromFrame === 'function') {
+        getTextFromFrame = textRecognitionModule.default.getTextFromFrame;
+        console.log('✅ Found getTextFromFrame in default export');
+        return getTextFromFrame;
+      }
+      // Check if default export IS the function
+      else if (typeof textRecognitionModule.default === 'function') {
+        getTextFromFrame = textRecognitionModule.default;
+        console.log('✅ Using default export as function');
+        return getTextFromFrame;
+      }
+      
+      // If we get here, the function wasn't found
+      console.error('❌ expo-text-recognition module loaded but getTextFromFrame not found. Module structure:', {
+        module: textRecognitionModule,
+        keys: Object.keys(textRecognitionModule),
+      });
+      return null;
+    } catch (error: any) {
+      // Module not available - this is expected in Expo Go or if native module isn't linked
+      console.error('❌ expo-text-recognition import failed:', error.message);
+      if (error.message?.includes('Cannot find native module')) {
+        console.error('   This usually means the native module is not linked. Make sure you:');
+        console.error('   1. Created a development build (npx expo run:android)');
+        console.error('   2. The app was rebuilt after installing expo-text-recognition');
+      }
+      return null;
+    }
+  })();
+
+  return loadPromise;
+};
 
 interface Asset {
   id?: string;
@@ -58,6 +131,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
   const [state, setState] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showStatePicker, setShowStatePicker] = useState(false);
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
   const [errors, setErrors] = useState<{
     vin?: string;
     mileage?: string;
@@ -129,6 +203,147 @@ export const AssetModal: React.FC<AssetModalProps> = ({
 
   const handleRemovePhoto = () => {
     setPhotoUri(null);
+  };
+
+  const handleCaptureMileageOCR = async () => {
+    // Load and check if TextRecognition is available
+    const ocrFunction = await loadTextRecognition();
+    if (!ocrFunction) {
+      Alert.alert(
+        'OCR Not Available',
+        'Text recognition requires a development build.\n\n' +
+        'To use OCR:\n' +
+        '1. Run: npx expo run:android (or npx expo run:ios)\n' +
+        '2. This creates a development build with native modules\n' +
+        '3. OCR will work in the development build\n\n' +
+        'Note: OCR does not work in Expo Go.',
+        [
+          { text: 'OK' },
+          {
+            text: 'Learn More',
+            onPress: () => {
+              // You could open a URL here with more info
+              console.log('Development build required for OCR');
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Camera permission is required to capture mileage readings.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setIsProcessingOCR(true);
+
+        try {
+          // Perform OCR on the image
+          // getTextFromFrame expects a file path or base64 string
+          const textArray = await ocrFunction!(uri, false);
+          
+          // Combine all text lines into a single string
+          const ocrText = textArray ? textArray.join(' ') : '';
+          
+          if (ocrText) {
+            // Extract mileage from OCR text
+            const extractionResult = extractMileageFromOCR(ocrText);
+            
+            if (extractionResult.mileage !== null) {
+              // Set the extracted mileage
+              setMileage(extractionResult.mileage.toString());
+              
+              // Clear any previous mileage errors
+              if (errors.mileage) {
+                setErrors({ ...errors, mileage: undefined });
+              }
+
+              // Show success message with confidence level
+              const confidenceMessage = 
+                extractionResult.confidence === 'high' 
+                  ? 'High confidence' 
+                  : extractionResult.confidence === 'medium'
+                  ? 'Medium confidence'
+                  : 'Low confidence - please verify';
+
+              Alert.alert(
+                'Mileage Extracted',
+                `Extracted mileage: ${extractionResult.mileage.toLocaleString()}\n\n${confidenceMessage}`,
+                [{ text: 'OK' }]
+              );
+            } else {
+              Alert.alert(
+                'No Mileage Found',
+                'Could not find a mileage reading in the image. Please ensure the odometer/mileage is clearly visible and try again.',
+                [{ text: 'OK' }]
+              );
+            }
+          } else {
+            Alert.alert(
+              'OCR Failed',
+              'Could not extract text from the image. Please try again with a clearer image.',
+              [{ text: 'OK' }]
+            );
+          }
+        } catch (ocrError: any) {
+          console.error('OCR processing error:', ocrError);
+          
+          // Check if it's the native module error
+          if (ocrError?.message?.includes('Cannot find native module') || 
+              ocrError?.message?.includes('ExpoTextRecognition') ||
+              ocrError?.message?.includes('getTextFromFrame')) {
+            Alert.alert(
+              'OCR Not Available',
+              'Text recognition requires a development build.\n\n' +
+              'Run: npx expo run:android (or npx expo run:ios)\n\n' +
+              'OCR does not work in Expo Go.',
+              [{ text: 'OK' }]
+            );
+          } else {
+            Alert.alert(
+              'Processing Error',
+              'Failed to process the image. Please try again.',
+              [{ text: 'OK' }]
+            );
+          }
+        } finally {
+          setIsProcessingOCR(false);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error capturing mileage:', error);
+      setIsProcessingOCR(false);
+      
+      if (error?.message?.includes('Cannot find native module')) {
+        Alert.alert(
+          'OCR Not Available',
+          'Text recognition requires a development build.\n\n' +
+          'Run: npx expo run:android (or npx expo run:ios)',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to capture image. Please try again.');
+      }
+    }
   };
 
   const validateForm = () => {
@@ -337,23 +552,46 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         )}
                       </View>
                       <View>
-                        <Input
-                          variant="text"
-                          label="Mileage *"
-                          value={mileage}
-                          onChangeText={(text) => {
-                            setMileage(text);
-                            if (errors.mileage) {
-                              setErrors({ ...errors, mileage: undefined });
-                            }
-                          }}
-                          style={styles.input}
-                          keyboardType="numeric"
-                          editable={!loading}
-                          placeholder="Enter mileage"
-                        />
+                        <View style={styles.mileageInputContainer}>
+                          <View style={styles.mileageInputWrapper}>
+                            <Input
+                              variant="text"
+                              label="Mileage *"
+                              value={mileage}
+                              onChangeText={(text) => {
+                                setMileage(text);
+                                if (errors.mileage) {
+                                  setErrors({ ...errors, mileage: undefined });
+                                }
+                              }}
+                              style={[styles.input, styles.mileageInput]}
+                              keyboardType="numeric"
+                              editable={!loading && !isProcessingOCR}
+                              placeholder="Enter mileage"
+                            />
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleCaptureMileageOCR}
+                            style={[
+                              styles.ocrButton,
+                              (loading || isProcessingOCR) && styles.ocrButtonDisabled,
+                            ]}
+                            disabled={loading || isProcessingOCR}
+                          >
+                            {isProcessingOCR ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <Text style={styles.ocrButtonText}>📷 OCR</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
                         {errors.mileage && (
                           <Text style={styles.errorText}>{errors.mileage}</Text>
+                        )}
+                        {isProcessingOCR && (
+                          <Text style={styles.processingText}>
+                            Processing image...
+                          </Text>
                         )}
                       </View>
                       
@@ -724,6 +962,44 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#14AB98',
     fontWeight: 'bold',
+  },
+  mileageInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  mileageInputWrapper: {
+    flex: 1,
+  },
+  mileageInput: {
+    marginBottom: 0,
+  },
+  ocrButton: {
+    backgroundColor: '#14AB98',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 80,
+    height: 48,
+    marginBottom: 16,
+  },
+  ocrButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  ocrButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  processingText: {
+    color: '#14AB98',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+    fontStyle: 'italic',
   },
 });
 
