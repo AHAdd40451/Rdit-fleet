@@ -18,6 +18,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingBar } from './LoadingBar';
 import { extractMileageFromOCR } from '../utils/extractMileageFromOCR';
+import { extractVinFromOCR } from '../utils/extractVinFromOCR';
 
 // Conditionally import TextRecognition - it requires native code
 // Use dynamic import for better compatibility with Expo modules
@@ -132,6 +133,8 @@ export const AssetModal: React.FC<AssetModalProps> = ({
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [isProcessingOCR, setIsProcessingOCR] = useState(false);
+  const [isProcessingOdometerOCR, setIsProcessingOdometerOCR] = useState(false);
+  const [isProcessingVinOCR, setIsProcessingVinOCR] = useState(false);
   const [errors, setErrors] = useState<{
     vin?: string;
     mileage?: string;
@@ -346,6 +349,284 @@ export const AssetModal: React.FC<AssetModalProps> = ({
     }
   };
 
+  const handleCaptureOdometerOCR = async () => {
+    // Load and check if TextRecognition is available
+    const ocrFunction = await loadTextRecognition();
+    if (!ocrFunction) {
+      Alert.alert(
+        'OCR Not Available',
+        'Text recognition requires a development build.\n\n' +
+        'To use OCR:\n' +
+        '1. Run: npx expo run:android (or npx expo run:ios)\n' +
+        '2. This creates a development build with native modules\n' +
+        '3. OCR will work in the development build\n\n' +
+        'Note: OCR does not work in Expo Go.',
+        [
+          { text: 'OK' },
+          {
+            text: 'Learn More',
+            onPress: () => {
+              console.log('Development build required for OCR');
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Camera permission is required to capture odometer readings.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setIsProcessingOdometerOCR(true);
+
+        try {
+          // Perform OCR on the image
+          const textArray = await ocrFunction!(uri, false);
+          
+          // Combine all text lines into a single string
+          const ocrText = textArray ? textArray.join(' ') : '';
+          
+          if (ocrText) {
+            // Extract odometer from OCR text (same logic as mileage)
+            const extractionResult = extractMileageFromOCR(ocrText);
+            
+            if (extractionResult.mileage !== null) {
+              // Set the extracted odometer
+              setOdometer(extractionResult.mileage.toString());
+              
+              // Clear any previous odometer errors
+              if (errors.odometer) {
+                setErrors({ ...errors, odometer: undefined });
+              }
+
+              // Show success message with confidence level
+              const confidenceMessage = 
+                extractionResult.confidence === 'high' 
+                  ? 'High confidence' 
+                  : extractionResult.confidence === 'medium'
+                  ? 'Medium confidence'
+                  : 'Low confidence - please verify';
+
+              Alert.alert(
+                'Odometer Extracted',
+                `Extracted odometer: ${extractionResult.mileage.toLocaleString()}\n\n${confidenceMessage}`,
+                [{ text: 'OK' }]
+              );
+            } else {
+              Alert.alert(
+                'No Odometer Found',
+                'Could not find an odometer reading in the image. Please ensure the odometer is clearly visible and try again.',
+                [{ text: 'OK' }]
+              );
+            }
+          } else {
+            Alert.alert(
+              'OCR Failed',
+              'Could not extract text from the image. Please try again with a clearer image.',
+              [{ text: 'OK' }]
+            );
+          }
+        } catch (ocrError: any) {
+          console.error('OCR processing error:', ocrError);
+          
+          // Check if it's the native module error
+          if (ocrError?.message?.includes('Cannot find native module') || 
+              ocrError?.message?.includes('ExpoTextRecognition') ||
+              ocrError?.message?.includes('getTextFromFrame')) {
+            Alert.alert(
+              'OCR Not Available',
+              'Text recognition requires a development build.\n\n' +
+              'Run: npx expo run:android (or npx expo run:ios)\n\n' +
+              'OCR does not work in Expo Go.',
+              [{ text: 'OK' }]
+            );
+          } else {
+            Alert.alert(
+              'Processing Error',
+              'Failed to process the image. Please try again.',
+              [{ text: 'OK' }]
+            );
+          }
+        } finally {
+          setIsProcessingOdometerOCR(false);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error capturing odometer:', error);
+      setIsProcessingOdometerOCR(false);
+      
+      if (error?.message?.includes('Cannot find native module')) {
+        Alert.alert(
+          'OCR Not Available',
+          'Text recognition requires a development build.\n\n' +
+          'Run: npx expo run:android (or npx expo run:ios)',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to capture image. Please try again.');
+      }
+    }
+  };
+
+  const handleCaptureVinOCR = async () => {
+    // Load and check if TextRecognition is available
+    const ocrFunction = await loadTextRecognition();
+    if (!ocrFunction) {
+      Alert.alert(
+        'OCR Not Available',
+        'Text recognition requires a development build.\n\n' +
+        'To use OCR:\n' +
+        '1. Run: npx expo run:android (or npx expo run:ios)\n' +
+        '2. This creates a development build with native modules\n' +
+        '3. OCR will work in the development build\n\n' +
+        'Note: OCR does not work in Expo Go.',
+        [
+          { text: 'OK' },
+          {
+            text: 'Learn More',
+            onPress: () => {
+              console.log('Development build required for OCR');
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Camera permission is required to capture VIN numbers.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setIsProcessingVinOCR(true);
+
+        try {
+          // Perform OCR on the image
+          const textArray = await ocrFunction!(uri, false);
+          
+          // Combine all text lines into a single string
+          const ocrText = textArray ? textArray.join(' ') : '';
+          
+          if (ocrText) {
+            // Extract VIN from OCR text
+            const extractionResult = extractVinFromOCR(ocrText);
+            
+            if (extractionResult.vin !== null) {
+              // Set the extracted VIN
+              setVin(extractionResult.vin);
+              
+              // Clear any previous VIN errors
+              if (errors.vin) {
+                setErrors({ ...errors, vin: undefined });
+              }
+
+              // Show success message with confidence level
+              const confidenceMessage = 
+                extractionResult.confidence === 'high' 
+                  ? 'High confidence' 
+                  : extractionResult.confidence === 'medium'
+                  ? 'Medium confidence'
+                  : 'Low confidence - please verify';
+
+              Alert.alert(
+                'VIN Extracted',
+                `Extracted VIN: ${extractionResult.vin}\n\n${confidenceMessage}`,
+                [{ text: 'OK' }]
+              );
+            } else {
+              Alert.alert(
+                'No VIN Found',
+                'Could not find a VIN number in the image. Please ensure the VIN is clearly visible and try again.',
+                [{ text: 'OK' }]
+              );
+            }
+          } else {
+            Alert.alert(
+              'OCR Failed',
+              'Could not extract text from the image. Please try again with a clearer image.',
+              [{ text: 'OK' }]
+            );
+          }
+        } catch (ocrError: any) {
+          console.error('OCR processing error:', ocrError);
+          
+          // Check if it's the native module error
+          if (ocrError?.message?.includes('Cannot find native module') || 
+              ocrError?.message?.includes('ExpoTextRecognition') ||
+              ocrError?.message?.includes('getTextFromFrame')) {
+            Alert.alert(
+              'OCR Not Available',
+              'Text recognition requires a development build.\n\n' +
+              'Run: npx expo run:android (or npx expo run:ios)\n\n' +
+              'OCR does not work in Expo Go.',
+              [{ text: 'OK' }]
+            );
+          } else {
+            Alert.alert(
+              'Processing Error',
+              'Failed to process the image. Please try again.',
+              [{ text: 'OK' }]
+            );
+          }
+        } finally {
+          setIsProcessingVinOCR(false);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error capturing VIN:', error);
+      setIsProcessingVinOCR(false);
+      
+      if (error?.message?.includes('Cannot find native module')) {
+        Alert.alert(
+          'OCR Not Available',
+          'Text recognition requires a development build.\n\n' +
+          'Run: npx expo run:android (or npx expo run:ios)',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to capture image. Please try again.');
+      }
+    }
+  };
+
   const validateForm = () => {
     const newErrors: {
       vin?: string;
@@ -459,23 +740,46 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         placeholder="Enter asset name"
                       />
                       <View>
-                        <Input
-                          variant="text"
-                          label="VIN *"
-                          value={vin}
-                          onChangeText={(text) => {
-                            setVin(text);
-                            if (errors.vin) {
-                              setErrors({ ...errors, vin: undefined });
-                            }
-                          }}
-                          style={styles.input}
-                          autoCapitalize="characters"
-                          editable={!loading}
-                          placeholder="Enter VIN number"
-                        />
+                        <View style={styles.mileageInputContainer}>
+                          <View style={styles.mileageInputWrapper}>
+                            <Input
+                              variant="text"
+                              label="VIN *"
+                              value={vin}
+                              onChangeText={(text) => {
+                                setVin(text);
+                                if (errors.vin) {
+                                  setErrors({ ...errors, vin: undefined });
+                                }
+                              }}
+                              style={[styles.input, styles.mileageInput]}
+                              autoCapitalize="characters"
+                              editable={!loading && !isProcessingVinOCR}
+                              placeholder="Enter VIN number"
+                            />
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleCaptureVinOCR}
+                            style={[
+                              styles.ocrButton,
+                              (loading || isProcessingVinOCR) && styles.ocrButtonDisabled,
+                            ]}
+                            disabled={loading || isProcessingVinOCR}
+                          >
+                            {isProcessingVinOCR ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <Text style={styles.ocrButtonText}>📷 OCR</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
                         {errors.vin && (
                           <Text style={styles.errorText}>{errors.vin}</Text>
+                        )}
+                        {isProcessingVinOCR && (
+                          <Text style={styles.processingText}>
+                            Processing image...
+                          </Text>
                         )}
                       </View>
                       <Input
@@ -532,23 +836,46 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         </TouchableOpacity>
                       </View>
                       <View>
-                        <Input
-                          variant="text"
-                          label="Odometer *"
-                          value={odometer}
-                          onChangeText={(text) => {
-                            setOdometer(text);
-                            if (errors.odometer) {
-                              setErrors({ ...errors, odometer: undefined });
-                            }
-                          }}
-                          style={styles.input}
-                          keyboardType="numeric"
-                          editable={!loading}
-                          placeholder="Enter odometer reading"
-                        />
+                        <View style={styles.mileageInputContainer}>
+                          <View style={styles.mileageInputWrapper}>
+                            <Input
+                              variant="text"
+                              label="Odometer *"
+                              value={odometer}
+                              onChangeText={(text) => {
+                                setOdometer(text);
+                                if (errors.odometer) {
+                                  setErrors({ ...errors, odometer: undefined });
+                                }
+                              }}
+                              style={[styles.input, styles.mileageInput]}
+                              keyboardType="numeric"
+                              editable={!loading && !isProcessingOdometerOCR}
+                              placeholder="Enter odometer reading"
+                            />
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleCaptureOdometerOCR}
+                            style={[
+                              styles.ocrButton,
+                              (loading || isProcessingOdometerOCR) && styles.ocrButtonDisabled,
+                            ]}
+                            disabled={loading || isProcessingOdometerOCR}
+                          >
+                            {isProcessingOdometerOCR ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <Text style={styles.ocrButtonText}>📷 OCR</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
                         {errors.odometer && (
                           <Text style={styles.errorText}>{errors.odometer}</Text>
+                        )}
+                        {isProcessingOdometerOCR && (
+                          <Text style={styles.processingText}>
+                            Processing image...
+                          </Text>
                         )}
                       </View>
                       <View>
@@ -965,8 +1292,9 @@ const styles = StyleSheet.create({
   },
   mileageInputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 16,
   },
   mileageInputWrapper: {
     flex: 1,
@@ -983,7 +1311,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 80,
     height: 48,
-    marginBottom: 16,
+    marginBottom: 0,
   },
   ocrButtonDisabled: {
     backgroundColor: '#ccc',
