@@ -27,7 +27,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('PK'));
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
   const [loginType, setLoginType] = useState<LoginType>('admin');
   const [loading, setLoading] = useState(false);
 
@@ -146,8 +146,58 @@ export default function LoginScreen() {
       }
 
       // Format phone number with country code
-      const callingCode = (selectedCountry as any)?.callingCode || (selectedCountry as any)?.dialCode || '92';
+      // Access calling code from selectedCountry object
+      let callingCode = '1'; // Default to USA
+      
+      if (selectedCountry) {
+
+        
+        // Try different possible property names for calling code
+        const possibleProperties = [
+          'callingCode',
+          'calling_code', 
+          'dialCode',
+          'phoneCode',
+          'countryCode',
+          'phone_code'
+        ];
+        
+        for (const prop of possibleProperties) {
+          if ((selectedCountry as any)[prop]) {
+            callingCode = String((selectedCountry as any)[prop]).replace('+', '');
+            console.log(`Found calling code via ${prop}:`, callingCode);
+            break;
+          }
+        }
+        
+        // If still not found, try to get it from the country's cca2 code
+        if (callingCode === '1' && (selectedCountry as any).cca2) {
+          // Expanded lookup table for calling codes by cca2
+          const countryCallingCodes: { [key: string]: string } = {
+            'AE': '971', 'SA': '966', 'QA': '974', 'KW': '965', 'BH': '973',
+            'OM': '968', 'LB': '961', 'JO': '962', 'PK': '92', 'IN': '91',
+            'CN': '86', 'JP': '81', 'DE': '49', 'GB': '44', 'IT': '39',
+            'ES': '34', 'FR': '33', 'AU': '61', 'BR': '55', 'ZA': '27',
+            'EG': '20', 'RU': '7', 'US': '1', 'CA': '1', 'MX': '52',
+            'AR': '54', 'CL': '56', 'CO': '57', 'PE': '51', 'VE': '58',
+            'NZ': '64', 'SG': '65', 'MY': '60', 'TH': '66', 'ID': '62',
+            'PH': '63', 'VN': '84', 'KR': '82', 'TW': '886', 'HK': '852',
+            'TR': '90', 'IL': '972', 'NG': '234', 'KE': '254'
+          };
+          const cca2 = (selectedCountry as any).cca2;
+          if (countryCallingCodes[cca2]) {
+            callingCode = countryCallingCodes[cca2];
+            console.log(`Found calling code via cca2 lookup (${cca2}):`, callingCode);
+          } else {
+            console.warn(`Country code not found in lookup table for cca2: ${cca2}`);
+          }
+        }
+      } else {
+        console.warn('selectedCountry is undefined');
+      }
+      
       const formattedValue = `+${callingCode}${digitsOnly}`;
+      console.log('Formatted phone number:', formattedValue);
 
       setLoading(true);
 
@@ -178,12 +228,34 @@ export default function LoginScreen() {
           throw new Error('Failed to send verification code. Please try again.');
         }
         
-        // TODO: In production, send OTP via SMS service (Twilio, AWS SNS, etc.)
-        // For now, log it for testing purposes
-        console.log('OTP sent to', phoneToSearch, ':', otp);
-        
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Send OTP via SMS using Supabase Edge Function
+        try {
+          const { data: functionData, error: functionError } = await supabase.functions.invoke('send-sms-otp', {
+            body: { phone: phoneToSearch },
+          });
+
+          if (functionError) {
+            console.error('Error sending SMS - function error:', {
+              message: functionError.message,
+              context: functionError.context,
+              status: functionError.status,
+            });
+            // Don't throw - OTP is already saved, user can still verify
+          } else if (functionData && !functionData.success) {
+            console.error('Error sending SMS - function returned failure:', functionData);
+            // Don't throw - OTP is already saved, user can still verify
+          } else {
+            console.log('SMS sent successfully');
+          }
+        } catch (smsError: any) {
+          console.error('Error sending SMS - exception:', {
+            message: smsError?.message,
+            name: smsError?.name,
+            stack: smsError?.stack,
+          });
+          // Don't throw error here - OTP is already saved, user can still verify
+          // Just log the error for debugging
+        }
         
         showToast('Verification code has been sent to your phone number', 'success');
         

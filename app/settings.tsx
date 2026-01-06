@@ -38,7 +38,7 @@ export default function SettingsScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('PK'));
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
   const [profileLoading, setProfileLoading] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
@@ -162,7 +162,48 @@ export default function SettingsScreen() {
       if (phoneNumber.trim()) {
         // Format phone number with country code
         const digitsOnly = phoneNumber.replace(/\D/g, '');
-        const callingCode = (selectedCountry as any)?.callingCode || (selectedCountry as any)?.dialCode || '92';
+        // Access calling code from selectedCountry object
+        let callingCode = '1'; // Default to USA
+        
+        if (selectedCountry) {
+          // Try different possible property names for calling code
+          const possibleProperties = [
+            'callingCode',
+            'calling_code', 
+            'dialCode',
+            'phoneCode',
+            'countryCode',
+            'phone_code'
+          ];
+          
+          for (const prop of possibleProperties) {
+            if ((selectedCountry as any)[prop]) {
+              callingCode = String((selectedCountry as any)[prop]).replace('+', '');
+              break;
+            }
+          }
+          
+          // If still not found, try to get it from the country's cca2 code
+          if (callingCode === '1' && (selectedCountry as any).cca2) {
+            // Expanded lookup table for calling codes by cca2
+            const countryCallingCodes: { [key: string]: string } = {
+              'AE': '971', 'SA': '966', 'QA': '974', 'KW': '965', 'BH': '973',
+              'OM': '968', 'LB': '961', 'JO': '962', 'PK': '92', 'IN': '91',
+              'CN': '86', 'JP': '81', 'DE': '49', 'GB': '44', 'IT': '39',
+              'ES': '34', 'FR': '33', 'AU': '61', 'BR': '55', 'ZA': '27',
+              'EG': '20', 'RU': '7', 'US': '1', 'CA': '1', 'MX': '52',
+              'AR': '54', 'CL': '56', 'CO': '57', 'PE': '51', 'VE': '58',
+              'NZ': '64', 'SG': '65', 'MY': '60', 'TH': '66', 'ID': '62',
+              'PH': '63', 'VN': '84', 'KR': '82', 'TW': '886', 'HK': '852',
+              'TR': '90', 'IL': '972', 'NG': '234', 'KE': '254'
+            };
+            const cca2 = (selectedCountry as any).cca2;
+            if (countryCallingCodes[cca2]) {
+              callingCode = countryCallingCodes[cca2];
+            }
+          }
+        }
+        
         const formattedValue = `+${callingCode}${digitsOnly}`;
         updateData.phone_no = formattedValue.trim();
       }
@@ -260,7 +301,7 @@ export default function SettingsScreen() {
         return match ? match[1].trim() : phone;
       };
       const countryCode = getCountryCodeFromPhone(phone);
-      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('PK'));
+      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('US'));
       setPhoneNumber(extractPhoneNumber(phone));
     }
     setIsEditingProfile(false);

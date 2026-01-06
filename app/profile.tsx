@@ -36,7 +36,7 @@ export default function ProfileScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('PK'));
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
         return match ? match[1].trim() : phone;
       };
       const countryCode = getCountryCodeFromPhone(phone);
-      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('PK'));
+      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('US'));
       setPhoneNumber(extractPhoneNumber(phone));
       console.log('userProfile.avatar_url', userProfile);
       // Load profile image URL if it exists, otherwise reset to null
@@ -253,7 +253,7 @@ export default function ProfileScreen() {
           return match ? match[1].trim() : phone;
         };
         const countryCode = getCountryCodeFromPhone(phone);
-        setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('PK'));
+        setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('US'));
         setPhoneNumber(extractPhoneNumber(phone));
       }
       setIsEditing(false);
