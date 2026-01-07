@@ -104,15 +104,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
         {/* Truck Icon */}
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => handleNavigation('/assets')}
+          onPress={() => handleNavigation(isAdmin ? '/assets' : '/userAssets')}
           activeOpacity={0.7}
         >
           <MaterialIcons
             name="local-shipping"
             size={24}
-            color={isActive('/assets') ? THEME_COLOR : '#666'}
+            color={isActive('/assets') || isActive('/userAssets') ? THEME_COLOR : '#666'}
           />
-          <Text style={[styles.label, { color: isActive('/assets') ? THEME_COLOR : '#666' }]}>
+          <Text style={[styles.label, { color: isActive('/assets') || isActive('/userAssets') ? THEME_COLOR : '#666' }]}>
             Assets
           </Text>
         </TouchableOpacity>

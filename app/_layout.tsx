@@ -205,6 +205,12 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
+        name="userAssets"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="profile"
         options={{
           headerShown: false,

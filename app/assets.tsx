@@ -90,6 +90,13 @@ export default function AssetsScreen() {
     checkCompany();
   }, [session, userProfile, router]);
 
+  // Redirect non-admin users to userAssets page
+  useEffect(() => {
+    if (userProfile?.role === 'user' && !checkingCompany) {
+      router.replace('/userAssets');
+    }
+  }, [userProfile, checkingCompany, router]);
+
   const handleSaveAsset = async (assetData: Omit<Asset, 'id' | 'user_id'>) => {
     setLoading(true);
 
@@ -481,6 +488,16 @@ export default function AssetsScreen() {
     );
   }
 
+  // Only show admin view - users are redirected to userAssets
+  if (userProfile?.role !== 'admin') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingFullContainer}>
+          <LoadingBar variant="bar" />
+        </View>
+      </SafeAreaView>
+    );
+  }
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
