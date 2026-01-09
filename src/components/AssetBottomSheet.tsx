@@ -190,6 +190,10 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
 
       for (let i = 0; i < result.assets.length; i++) {
         const asset = result.assets[i];
+        if (!asset?.uri) {
+          console.warn(`Skipping asset ${i + 1}: missing URI`);
+          continue;
+        }
         setUploadingIndex(i);
         try {
           const publicUrl = await uploadAssetImage(asset.uri, i);
@@ -232,7 +236,7 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
         quality: 0.8,
       });
 
-      if (result.canceled || !result.assets || result.assets.length === 0) {
+      if (result.canceled || !result.assets || result.assets.length === 0 || !result.assets[0]?.uri) {
         return;
       }
 

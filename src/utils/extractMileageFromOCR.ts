@@ -28,11 +28,28 @@ export function extractMileageFromOCR(ocrText: string): MileageExtractionResult 
     };
   }
 
-  // Clean the text - remove common OCR artifacts
-  const cleanedText = ocrText
+  // Log the raw OCR text for debugging
+  console.log('Raw OCR text:', ocrText);
+
+  // Clean the text - remove common OCR artifacts but preserve digit sequences
+  // First, try to merge digits that might be split by spaces
+  let cleanedText = ocrText
     .replace(/[^\d\s.,]/g, ' ') // Keep only digits, spaces, dots, and commas
-    .replace(/\s+/g, ' ') // Normalize whitespace
     .trim();
+
+  // Try to merge digits separated by spaces (common OCR error)
+  // This handles cases like "1 60648" -> "160648" or "1  60648" -> "160648"
+  // Keep merging until no more changes (handles multiple spaces)
+  let previousText = '';
+  while (cleanedText !== previousText) {
+    previousText = cleanedText;
+    cleanedText = cleanedText.replace(/(\d)\s+(\d)/g, '$1$2');
+  }
+  
+  // Normalize remaining whitespace
+  cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
+
+  console.log('Cleaned OCR text:', cleanedText);
 
   // Find all numbers in the text (including those with commas/dots as thousand separators)
   const numberPatterns = [
@@ -40,10 +57,13 @@ export function extractMileageFromOCR(ocrText: string): MileageExtractionResult 
     /\b\d{1,3}(?:,\d{3})+\b/g,
     // Pattern 2: Numbers with dots (e.g., "123.456")
     /\b\d{1,3}(?:\.\d{3})+\b/g,
-    // Pattern 3: Plain numbers (4-7 digits, likely mileage)
+    // Pattern 3: Long continuous digit sequences (4-8 digits, likely mileage)
+    // Use non-word-boundary to catch numbers at start/end of text
+    /(?<!\d)\d{4,8}(?!\d)/g,
+    // Pattern 4: Plain numbers (4-7 digits, likely mileage) with word boundaries
     /\b\d{4,7}\b/g,
-    // Pattern 4: Any sequence of digits
-    /\b\d+\b/g,
+    // Pattern 5: Any sequence of digits (fallback)
+    /\d+/g,
   ];
 
   const allNumbers: number[] = [];
@@ -55,8 +75,8 @@ export function extractMileageFromOCR(ocrText: string): MileageExtractionResult 
     if (matches) {
       matches.forEach((match) => {
         // Remove commas/dots and convert to number
-        const cleaned = match.replace(/[,.]/g, '');
-        if (!seenNumbers.has(cleaned)) {
+        const cleaned = match.replace(/[,.]/g, '').trim();
+        if (cleaned && !seenNumbers.has(cleaned)) {
           seenNumbers.add(cleaned);
           const num = parseInt(cleaned, 10);
           if (!isNaN(num) && num > 0) {
@@ -66,6 +86,8 @@ export function extractMileageFromOCR(ocrText: string): MileageExtractionResult 
       });
     }
   });
+
+  console.log('Extracted numbers:', allNumbers);
 
   if (allNumbers.length === 0) {
     return {
@@ -81,10 +103,17 @@ export function extractMileageFromOCR(ocrText: string): MileageExtractionResult 
   // - Between 0 and 1,000,000 (reasonable range for vehicles)
   // - Often 4-6 digits
   // - Not too small (likely not a year or small number)
+  // - Prefer longer numbers (more complete readings)
   const likelyMileage = allNumbers
     .filter((num) => num >= 100 && num <= 999999)
     .sort((a, b) => {
-      // Prefer numbers in the typical mileage range (10,000 - 200,000)
+      // First, prefer longer numbers (more digits = more complete reading)
+      const aDigits = a.toString().length;
+      const bDigits = b.toString().length;
+      if (aDigits !== bDigits) {
+        return bDigits - aDigits; // Longer numbers first
+      }
+      // If same length, use mileage score
       const aScore = getMileageScore(a);
       const bScore = getMileageScore(b);
       return bScore - aScore;
@@ -152,9 +181,12 @@ function getMileageScore(num: number): number {
     score += 25;
   }
 
-  // Prefer 5-6 digit numbers (most common mileage format)
+  // Prefer 6-digit numbers (most common for higher mileage)
+  // Then 5-digit numbers
   const digits = num.toString().length;
-  if (digits === 5 || digits === 6) {
+  if (digits === 6) {
+    score += 40; // Highest preference for 6-digit numbers
+  } else if (digits === 5) {
     score += 30;
   } else if (digits === 4 || digits === 7) {
     score += 15;

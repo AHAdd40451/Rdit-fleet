@@ -155,14 +155,14 @@ export const OCRExample: React.FC = () => {
 
     try {
       // Launch camera
+      // Note: allowsEditing is false for OCR - we want the full image for better accuracy
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false, // Disabled for OCR - full image is better for text recognition
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (!result.canceled && result.assets && result.assets.length > 0 && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         setImageUri(uri);
         setExtractedText(''); // Clear previous text
@@ -191,14 +191,14 @@ export const OCRExample: React.FC = () => {
       }
 
       // Launch image picker
+      // Note: allowsEditing is false for OCR - we want the full image for better accuracy
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false, // Disabled for OCR - full image is better for text recognition
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (!result.canceled && result.assets && result.assets.length > 0 && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         setImageUri(uri);
         setExtractedText(''); // Clear previous text

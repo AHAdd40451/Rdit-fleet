@@ -187,15 +187,40 @@ export const AssetModal: React.FC<AssetModalProps> = ({
         return;
       }
 
-      // Launch camera
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+      // Launch camera with error handling
+      let result;
+      try {
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 0.8,
+        });
+      } catch (cameraError: any) {
+        console.error('Camera launch error:', cameraError);
+        // Handle the crop contract error specifically
+        if (cameraError?.message?.includes('Required value was null') || 
+            cameraError?.message?.includes('CropImageContract')) {
+          Alert.alert(
+            'Camera Error',
+            'There was an issue with the image editor. Please try again.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Camera Error',
+            'Failed to open camera. Please try again.',
+            [{ text: 'OK' }]
+          );
+        }
+        return;
+      }
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (!result || result.canceled) {
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0 && result.assets[0]?.uri) {
         setPhotoUri(result.assets[0].uri);
       }
     } catch (error) {
@@ -235,6 +260,9 @@ export const AssetModal: React.FC<AssetModalProps> = ({
     }
 
     try {
+      // Reset processing state first
+      setIsProcessingOCR(false);
+      
       // Request camera permissions
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       
@@ -247,15 +275,31 @@ export const AssetModal: React.FC<AssetModalProps> = ({
         return;
       }
 
-      // Launch camera
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+      // Launch camera with error handling
+      // Note: allowsEditing is false for OCR - we want the full image for better accuracy
+      let result;
+      try {
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false, // Disabled for OCR - full image is better for text recognition
+          quality: 0.8,
+        });
+      } catch (cameraError: any) {
+        console.error('Camera launch error:', cameraError);
+        Alert.alert(
+          'Camera Error',
+          'Failed to open camera. Please try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (!result || result.canceled) {
+        // User canceled or result is null
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0 && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         setIsProcessingOCR(true);
 
@@ -267,9 +311,13 @@ export const AssetModal: React.FC<AssetModalProps> = ({
           // Combine all text lines into a single string
           const ocrText = textArray ? textArray.join(' ') : '';
           
+          console.log('OCR extracted text:', ocrText);
+          
           if (ocrText) {
             // Extract mileage from OCR text
             const extractionResult = extractMileageFromOCR(ocrText);
+            
+            console.log('Extraction result:', extractionResult);
             
             if (extractionResult.mileage !== null) {
               // Set the extracted mileage
@@ -387,15 +435,33 @@ export const AssetModal: React.FC<AssetModalProps> = ({
         return;
       }
 
-      // Launch camera
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+      // Reset processing state first
+      setIsProcessingOdometerOCR(false);
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      // Launch camera with error handling
+      // Note: allowsEditing is false for OCR - we want the full image for better accuracy
+      let result;
+      try {
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false, // Disabled for OCR - full image is better for text recognition
+          quality: 0.8,
+        });
+      } catch (cameraError: any) {
+        console.error('Camera launch error:', cameraError);
+        Alert.alert(
+          'Camera Error',
+          'Failed to open camera. Please try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (!result || result.canceled) {
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0 && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         setIsProcessingOdometerOCR(true);
 
@@ -406,9 +472,13 @@ export const AssetModal: React.FC<AssetModalProps> = ({
           // Combine all text lines into a single string
           const ocrText = textArray ? textArray.join(' ') : '';
           
+          console.log('OCR extracted text:', ocrText);
+          
           if (ocrText) {
             // Extract odometer from OCR text (same logic as mileage)
             const extractionResult = extractMileageFromOCR(ocrText);
+            
+            console.log('Extraction result:', extractionResult);
             
             if (extractionResult.mileage !== null) {
               // Set the extracted odometer
@@ -526,15 +596,33 @@ export const AssetModal: React.FC<AssetModalProps> = ({
         return;
       }
 
-      // Launch camera
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+      // Reset processing state first
+      setIsProcessingVinOCR(false);
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      // Launch camera with error handling
+      // Note: allowsEditing is false for OCR - we want the full image for better accuracy
+      let result;
+      try {
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false, // Disabled for OCR - full image is better for text recognition
+          quality: 0.8,
+        });
+      } catch (cameraError: any) {
+        console.error('Camera launch error:', cameraError);
+        Alert.alert(
+          'Camera Error',
+          'Failed to open camera. Please try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (!result || result.canceled) {
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0 && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         setIsProcessingVinOCR(true);
 

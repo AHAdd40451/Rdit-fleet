@@ -341,14 +341,33 @@ export default function ProfileScreen() {
         return;
       }
   
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+      let result;
+      try {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } catch (pickerError: any) {
+        console.error('Image picker error:', pickerError);
+        // Handle the crop contract error specifically
+        if (pickerError?.message?.includes('Required value was null') || 
+            pickerError?.message?.includes('CropImageContract')) {
+          Alert.alert(
+            'Image Editor Error',
+            'There was an issue with the image editor. Please try selecting the image again.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Error', 'Failed to open image picker. Please try again.');
+        }
+        return;
+      }
   
-      if (result.canceled) return;
+      if (!result || result.canceled || !result.assets || result.assets.length === 0 || !result.assets[0]?.uri) {
+        return;
+      }
   
       const imageUri = result.assets[0].uri;
   
