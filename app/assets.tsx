@@ -2,31 +2,31 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
+  TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Button } from '../src/components/Button';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingBar } from '../src/components/LoadingBar';
 import { useAuth } from '../src/contexts/AuthContext';
-import { useConfirmationModal } from '../src/contexts/ConfirmationModalContext';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
-import { AssetsTable } from '../src/components/AssetsTable';
 import { AssetModal } from '../src/components/AssetModal';
 import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
-import { TopBar } from '../src/components/TopBar';
 import { Sidebar } from '../src/components/Sidebar';
+import { TopBar } from '../src/components/TopBar';
 import { generateUUIDFromString } from '../src/utils/generateUUID';
 import { callRapidFunction } from '../src/utils/callRapidFunction';
+import { assetStyles } from './styles/asset.styles';
+import { fetchAssets } from '../src/lib/getAllFunction';
+import { Table, TableColumn } from '../src/components/Table';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
-
 interface Asset {
   id?: string;
   asset_name: string;
@@ -43,21 +43,52 @@ interface Asset {
   state?: string | null;
 }
 
+interface RiskForecast {
+  id: string;
+  asset: string;
+  issue: string;
+  days: number;
+}
+
+interface ActionItem {
+  id: string;
+  asset: string;
+  task: string;
+  dueDate: string;
+  assignedTo: string;
+  status: 'pending' | 'overdue' | 'due_soon' | 'completed';
+}
+
+interface RecentActivity {
+  id: string;
+  user: string;
+  action: string;
+  asset: string;
+  timestamp: string;
+}
+
 export default function AssetsScreen() {
   const router = useRouter();
-  const { signOut, userProfile, user, session } = useAuth();
+  const { userProfile, user, session } = useAuth();
   const { showToast } = useToast();
-  const { showConfirmation } = useConfirmationModal();
   
-  // Modal and asset management state
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [checkingCompany, setCheckingCompany] = useState(true);
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [checkingCompany, setCheckingCompany] = useState(true);
-  const [refreshAssetsTable, setRefreshAssetsTable] = useState(0);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overdue' | 'due_soon' | 'completed' | 'all_assets'>('all_assets');
+
+  // Fetch assets
+  useEffect(() => {
+    if (!checkingCompany) {
+      fetchAssets(session, userProfile, setLoading, setAssets, showToast);
+    }
+  }, [session, userProfile, checkingCompany]);
+
 
   // Check if company exists for admin user
   useEffect(() => {
@@ -74,7 +105,6 @@ export default function AssetsScreen() {
           .eq('user_id', session.user.id)
           .single();
 
-        // If company doesn't exist, redirect to company setup page
         if (error || !companyData) {
           router.replace('/company');
           return;
@@ -90,108 +120,96 @@ export default function AssetsScreen() {
     checkCompany();
   }, [session, userProfile, router]);
 
-  // Redirect non-admin users to userAssets page
+  // Redirect non-admin users
   useEffect(() => {
     if (userProfile?.role === 'user' && !checkingCompany) {
       router.replace('/userAssets');
     }
   }, [userProfile, checkingCompany, router]);
 
-  const handleSaveAsset = async (assetData: Omit<Asset, 'id' | 'user_id'>) => {
-    setLoading(true);
+  // Calculate metrics
+  const totalAssets = assets.length;
+  const atRiskAssets = assets.filter(a => {
+    // Consider assets at risk if mileage > 100000 or year < 2010
+    return (a.mileage && a.mileage > 100000) || (a.year && a.year < 2010);
+  }).length;
+  const maintenanceDue = assets.filter(a => {
+    // Consider maintenance due if mileage > 50000 or odometer > 50000
+    return (a.mileage && a.mileage > 50000) || (a.odometer && a.odometer > 50000);
+  }).length;
+  const complianceIssues = assets.filter(a => !a.vin || !a.state).length;
 
+  // Calculate fleet health (0-100)
+  const fleetHealth = totalAssets > 0 
+    ? Math.round(100 - ((atRiskAssets + maintenanceDue + complianceIssues) / totalAssets) * 30)
+    : 100;
+  const fleetHealthPercentage = Math.max(0, Math.min(100, fleetHealth));
+
+  // Mock risk forecast data (in real app, this would come from database)
+  const riskForecasts: RiskForecast[] = [
+    { id: '1', asset: 'Truck #14', issue: 'Brake Wear', days: 18 },
+    { id: '2', asset: 'Tractor #7', issue: 'Battery Warning', days: 0 },
+    { id: '3', asset: 'Trailer #22', issue: 'Tire Replacement Soon', days: 0 },
+  ];
+
+  // Mock action items (in real app, this would come from database)
+  const actionItems: ActionItem[] = [
+    { id: '1', asset: 'Truck #12', task: 'Oil Change', dueDate: '2024-05-30', assignedTo: 'John', status: 'pending' },
+    { id: '2', asset: 'Trailer #8', task: 'DOT Inspection', dueDate: '2024-05-20', assignedTo: 'Sarah', status: 'overdue' },
+    { id: '3', asset: 'Truck #19', task: 'Check-In', dueDate: '2024-05-25', assignedTo: 'Mike', status: 'due_soon' },
+  ];
+
+  // Mock recent activity (in real app, this would come from asset_logs)
+  const recentActivities: RecentActivity[] = [
+    { id: '1', user: 'John', action: 'Uploaded Oil Change', asset: 'Truck #12', timestamp: '2 hours ago' },
+    { id: '2', user: 'System', action: 'DOT Inspection Done', asset: 'Trailer #8', timestamp: '5 hours ago' },
+    { id: '3', user: 'System', action: 'Missed Check-In', asset: 'Truck #19', timestamp: '1 day ago' },
+  ];
+
+  const filteredActionItems = actionItems.filter(item => {
+    if (activeTab === 'overdue') return item.status === 'overdue';
+    if (activeTab === 'due_soon') return item.status === 'due_soon';
+    if (activeTab === 'completed') return item.status === 'completed';
+    return false;
+  });
+
+
+  const handleAddAsset = () => {
+    setEditingAsset(null);
+    setShowAssetModal(true);
+  };
+
+  const handleEditAsset = (asset: Asset) => {
+    setEditingAsset(asset);
+    setShowAssetModal(true);
+  };
+
+  const handleAssetClick = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setShowBottomSheet(true);
+  };
+
+  const handleSaveAsset = async (assetData: Omit<Asset, 'id' | 'user_id' | 'photo'>) => {
     try {
-      // Assets table uses UUID (from Supabase auth session.user.id)
-      // Must use UUID, not numeric userProfile.id
       let currentUserId = session?.user?.id;
       
-      // If session is not available, try to get it directly from Supabase
-      // This handles cases where the session might not be loaded in context yet
       if (!currentUserId) {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         currentUserId = currentSession?.user?.id;
       }
       
-      // For phone-based users: check if they have a Supabase Auth account
-      // If not, we need to create one or use an alternative approach
       if (!currentUserId && userProfile) {
-        // If user doesn't have an email, generate a deterministic UUID from their phone number or ID
         if (!userProfile.email) {
-          // Generate a deterministic UUID from phone number (preferred) or user ID
           const identifier = userProfile.phone_no || `user_${userProfile.id}`;
           currentUserId = generateUUIDFromString(identifier);
-          
-          console.log('Generated UUID for user without email:', currentUserId);
-          
-          // For users without email, we use the generated UUID directly
-          // No need to create Supabase Auth account
-        }
-
-        // User has email - try to get or create Supabase Auth account
-        // First, check if user is already signed in (might have been signed in during phone login)
-        try {
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (authUser && authUser.email === userProfile.email) {
-            currentUserId = authUser.id;
-          }
-        } catch (getUserError) {
-          // User not signed in, continue to create account
-          console.log('User not signed in, will create auth account if needed');
-        }
-
-        // If still no user ID, try to create a Supabase Auth account
-        if (!currentUserId && userProfile.email) {
+        } else {
           try {
-            // Generate a secure random password (user won't need to use it for phone login)
-            const tempPassword = `phone_${userProfile.id}_${Date.now()}_${Math.random().toString(36).slice(-8)}`;
-            
-            // Try to sign up (create new auth account)
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: userProfile.email,
-              password: tempPassword,
-              options: {
-                emailRedirectTo: undefined, // No email confirmation needed for phone-based users
-              }
-            });
-
-            if (signUpError) {
-              // If sign up fails, check if it's because user already exists
-              if (signUpError.message.includes('already registered') || 
-                  signUpError.message.includes('already exists') ||
-                  signUpError.message.includes('User already registered')) {
-                // User already exists in auth but we're not signed in
-                // This means the account was created but we don't have the session
-                // We need to sign in, but we don't know the password
-                // For now, show a helpful error message
-                throw new Error('Your account requires email/password authentication. Please sign out and sign in with your email and password, or contact support to reset your password.');
-              } else {
-                throw signUpError;
-              }
-            } else if (signUpData.user) {
-              // Successfully created auth account
-              currentUserId = signUpData.user.id;
-              
-              // Sign in with the new account to establish session
-              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                email: userProfile.email,
-                password: tempPassword,
-              });
-              
-              if (signInError) {
-                console.error('Error signing in after account creation:', signInError);
-                // Even if sign in fails, we have the user ID, so continue
-              } else if (signInData.user) {
-                // Session established - AuthContext will pick this up via onAuthStateChange
-                console.log('Supabase Auth session established for phone user');
-              }
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (authUser && authUser.email === userProfile.email) {
+              currentUserId = authUser.id;
             }
-          } catch (authError: any) {
-            console.error('Error setting up Supabase Auth for phone user:', authError);
-            // If it's our custom error, throw it as is
-            if (authError.message && authError.message.includes('requires email/password')) {
-              throw authError;
-            }
-            throw new Error('Unable to set up authentication. Please contact support or sign in with email and password.');
+          } catch (getUserError) {
+            console.log('User not signed in');
           }
         }
       }
@@ -200,14 +218,8 @@ export default function AssetsScreen() {
         throw new Error('Unable to identify current user. Please log in again.');
       }
 
-      // Only admins can create assets, but both admins and users can update
-      if (!editingAsset && userProfile?.role !== 'admin') {
-        throw new Error('You do not have permission to create assets. Only admins can create new assets.');
-      }
-
       if (editingAsset) {
-        // Update existing asset - both admins and users can do this
-        // First, fetch the current asset to get old values for logging
+        // Update existing asset
         const { data: currentAsset, error: fetchError } = await supabase
           .from('assets')
           .select('*')
@@ -215,31 +227,24 @@ export default function AssetsScreen() {
           .single();
 
         if (fetchError) {
-          console.error('Error fetching current asset:', fetchError);
           throw new Error('Failed to fetch current asset data.');
         }
 
-        // Update the asset
         const { error: updateError } = await supabase
           .from('assets')
           .update(assetData)
           .eq('id', editingAsset.id);
 
         if (updateError) {
-          console.error('Database error:', updateError);
-          const errorMessage = updateError.message || 'Failed to update asset.';
-          throw new Error(
-            `Database error: ${errorMessage}. Please check your table structure.`
-          );
+          throw new Error(updateError.message || 'Failed to update asset.');
         }
 
-        // Create log entry for asset update
+        // Create log entry
         try {
           const oldValues: any = {};
           const newValues: any = {};
           const changes: any = {};
 
-          // Compare old and new values to track changes
           Object.keys(assetData).forEach((key) => {
             const typedKey = key as keyof typeof assetData;
             const oldValue = currentAsset?.[typedKey];
@@ -252,34 +257,25 @@ export default function AssetsScreen() {
             }
           });
 
-          // If there are changes, log them
           if (Object.keys(changes).length > 0) {
             const logEntry = {
               asset_id: editingAsset.id,
               user_id: currentUserId,
               action: 'updated',
-              user_role: userProfile?.role || 'user',
+              user_role: 'admin',
               changes: changes,
               old_values: oldValues,
               new_values: newValues,
-              description: `${userProfile?.role === 'admin' ? 'Admin' : 'User'} updated asset "${assetData.asset_name || editingAsset.asset_name}"`,
+              description: `Admin updated asset "${assetData.asset_name || editingAsset.asset_name}"`,
             };
 
-            const { error: logError } = await supabase
-              .from('asset_logs')
-              .insert([logEntry]);
-
-            if (logError) {
-              console.error('Error creating asset log:', logError);
-              // Don't throw error here, asset was updated successfully
-            }
+            await supabase.from('asset_logs').insert([logEntry]);
           }
         } catch (logErr) {
           console.error('Error in log creation:', logErr);
-          // Don't throw error here, asset was updated successfully
         }
 
-        // Call rapid-function edge function if mileage > 5000
+        // Call rapid-function if mileage > 5000
         if (assetData.mileage && assetData.mileage > 5000) {
           try {
             await callRapidFunction({
@@ -287,17 +283,16 @@ export default function AssetsScreen() {
               asset_name: assetData.asset_name || editingAsset.asset_name,
               mileage: assetData.mileage,
               user_id: currentUserId,
-              user_email: userProfile?.email || user?.email,
+              user_email: userProfile?.email,
             });
           } catch (rapidFunctionError) {
             console.error('Error calling rapid-function:', rapidFunctionError);
-            // Don't throw error here, asset was updated successfully
           }
         }
 
         showToast('Asset updated successfully!', 'success', 2000);
       } else {
-        // Create new asset - only admins can do this
+        // Create new asset
         const newAssetData = {
           ...assetData,
           user_id: currentUserId,
@@ -310,14 +305,10 @@ export default function AssetsScreen() {
           .single();
 
         if (insertError) {
-          console.error('Database error:', insertError);
-          const errorMessage = insertError.message || 'Failed to create asset.';
-          throw new Error(
-            `Database error: ${errorMessage}. Please check your table structure.`
-          );
+          throw new Error(insertError.message || 'Failed to create asset.');
         }
 
-        // Create log entry for asset creation
+        // Create log entry
         try {
           const logEntry = {
             asset_id: insertedAsset.id,
@@ -330,23 +321,14 @@ export default function AssetsScreen() {
             description: `Admin created new asset "${assetData.asset_name}"`,
           };
 
-          const { error: logError } = await supabase
-            .from('asset_logs')
-            .insert([logEntry]);
-
-          if (logError) {
-            console.error('Error creating asset log:', logError);
-            // Don't throw error here, asset was created successfully
-          }
+          await supabase.from('asset_logs').insert([logEntry]);
         } catch (logErr) {
           console.error('Error in log creation:', logErr);
-          // Don't throw error here, asset was created successfully
         }
 
-        // Create notifications for all users linked to this admin
+        // Create notifications for linked users
         if (insertedAsset && userProfile?.role === 'admin') {
           try {
-            // Find all users where userId matches the admin's ID
             const { data: linkedUsers, error: usersError } = await supabase
               .from('users')
               .select('id')
@@ -354,7 +336,6 @@ export default function AssetsScreen() {
               .eq('role', 'user');
 
             if (!usersError && linkedUsers && linkedUsers.length > 0) {
-              // Create notifications for each linked user
               const notifications = linkedUsers.map(user => ({
                 user_id: user.id,
                 message: `New asset "${assetData.asset_name}" has been created by your admin.`,
@@ -364,22 +345,14 @@ export default function AssetsScreen() {
                 created_at: new Date().toISOString(),
               }));
 
-              const { error: notificationError } = await supabase
-                .from('notifications')
-                .insert(notifications);
-
-              if (notificationError) {
-                console.error('Error creating notifications:', notificationError);
-                // Don't throw error here, asset was created successfully
-              }
+              await supabase.from('notifications').insert(notifications);
             }
           } catch (notificationErr) {
             console.error('Error in notification creation:', notificationErr);
-            // Don't throw error here, asset was created successfully
           }
         }
 
-        // Call rapid-function edge function if mileage > 5000
+        // Call rapid-function if mileage > 5000
         if (assetData.mileage && assetData.mileage > 5000) {
           try {
             await callRapidFunction({
@@ -391,42 +364,45 @@ export default function AssetsScreen() {
             });
           } catch (rapidFunctionError) {
             console.error('Error calling rapid-function:', rapidFunctionError);
-            // Don't throw error here, asset was created successfully
           }
         }
 
         showToast('Asset created successfully!', 'success', 2000);
       }
 
-      // Close modal and refresh table
+      // Refresh assets list
+      let filterUserId = session?.user?.id;
+      if (!filterUserId && userProfile) {
+        const identifier = userProfile.phone_no || `user_${userProfile.id}`;
+        filterUserId = generateUUIDFromString(identifier);
+      }
+      
+      if (filterUserId) {
+        const { data, error: fetchError } = await supabase
+          .from('assets')
+          .select('*')
+          .eq('user_id', filterUserId)
+          .order('created_at', { ascending: false });
+
+        if (!fetchError && data) {
+          setAssets(data);
+        }
+      }
+
       setShowAssetModal(false);
       setEditingAsset(null);
-      setRefreshAssetsTable(prev => prev + 1);
     } catch (error: any) {
       console.error('Save asset error:', error);
       showToast(
         error.message || 'An error occurred. Please try again.',
         'error'
       );
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleAddAsset = () => {
+  const handleCloseModal = () => {
+    setShowAssetModal(false);
     setEditingAsset(null);
-    setShowAssetModal(true);
-  };
-
-  const handleEditAsset = (asset: Asset) => {
-    // Both admins and users can edit assets
-    setEditingAsset(asset);
-    setShowAssetModal(true);
-  };
-
-  const handleAssetClick = (asset: Asset) => {
-    setSelectedAsset(asset);
-    setShowBottomSheet(true);
   };
 
   const handleCloseBottomSheet = () => {
@@ -434,123 +410,307 @@ export default function AssetsScreen() {
     setSelectedAsset(null);
   };
 
-  const handlePhotosUpdate = async (assetId: string, photos: string[]) => {
-    try {
-      // Only admins can update photos
-      if (userProfile?.role !== 'admin') {
-        throw new Error('You do not have permission to update photos.');
-      }
+  // Fleet Health Gauge Component
+  const FleetHealthGauge = ({ percentage }: { percentage: number }) => {
+    const getColor = () => {
+      if (percentage >= 80) return TEAL_GREEN;
+      if (percentage >= 60) return BRIGHT_GREEN;
+      if (percentage >= 40) return '#FFA500';
+      return '#F44336';
+    };
 
-      // Update the asset with the new photos array
-      const { error: updateError } = await supabase
-        .from('assets')
-        .update({ photos: photos })
-        .eq('id', assetId);
-
-      if (updateError) {
-        console.error('Database error:', updateError);
-        throw new Error('Failed to update photos.');
-      }
-
-      // Update the selected asset in state to reflect the change
-      if (selectedAsset && selectedAsset.id === assetId) {
-        setSelectedAsset({ ...selectedAsset, photos: photos });
-      }
-
-      // Refresh the assets table
-      setRefreshAssetsTable(prev => prev + 1);
-      
-      showToast('Photos updated successfully!', 'success', 2000);
-    } catch (error: any) {
-      console.error('Update photos error:', error);
-      showToast(
-        error.message || 'An error occurred while updating photos.',
-        'error'
-      );
-    }
+    return (
+      <View style={assetStyles.gaugeContainer}>
+        <View style={assetStyles.gaugeOuter}>
+          <View style={[assetStyles.gaugeInner, { borderColor: getColor() }]}>
+            <Text style={assetStyles.gaugeValue}>{percentage}</Text>
+            <Text style={assetStyles.gaugeLabel}>Fleet Health</Text>
+          </View>
+          {/* Progress indicator using a simple visual representation */}
+          <View style={[assetStyles.gaugeProgress, { 
+            width: `${percentage}%`,
+            backgroundColor: getColor(),
+          }]} />
+        </View>
+      </View>
+    );
   };
 
-  const handleCloseModal = () => {
-    if (!loading) {
-      setShowAssetModal(false);
-      setEditingAsset(null);
-    }
-  };
-
-  // Show loading while checking company
   if (checkingCompany) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingFullContainer}>
+      <SafeAreaView style={assetStyles.container}>
+        <View style={assetStyles.loadingFullContainer}>
           <LoadingBar variant="bar" />
         </View>
       </SafeAreaView>
     );
   }
 
-  // Only show admin view - users are redirected to userAssets
   if (userProfile?.role !== 'admin') {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingFullContainer}>
+      <SafeAreaView style={assetStyles.container}>
+        <View style={assetStyles.loadingFullContainer}>
           <LoadingBar variant="bar" />
         </View>
       </SafeAreaView>
     );
   }
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        {/* Header */}
-        <TopBar
-          title="Assets"
-          showHamburger={true}
-          onHamburgerPress={() => setSidebarVisible(true)}
-        />
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Welcome Section */}
-          <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeTitle}>Assets Management</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Welcome, {userProfile?.first_name || 'Admin'}! Manage your fleet assets efficiently.
-            </Text>
+  return (
+    <SafeAreaView style={assetStyles.container} edges={['top', 'bottom']}>
+      <TopBar
+        title="Assets"
+        showHamburger={true}
+        onHamburgerPress={() => setSidebarVisible(true)}
+      />
+
+      <ScrollView
+        contentContainerStyle={assetStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Fleet Health Section */}
+        <View style={assetStyles.fleetHealthSection}>
+          <View style={assetStyles.fleetHealthGauge}>
+            <FleetHealthGauge percentage={fleetHealthPercentage} />
+            <TouchableOpacity style={assetStyles.riskAlertButton}>
+              <Text style={assetStyles.riskAlertText}>Risk Alert</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Assets Table Section */}
-          <View style={styles.contentSection}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderText}>
-                <Text style={styles.sectionTitle}>All Assets</Text>
-                <Text style={styles.sectionText}>
-                  View and manage all assets in your fleet.
+          <View style={assetStyles.metricsGrid}>
+            <View style={assetStyles.metricCard}>
+              <Text style={assetStyles.metricValue}>{totalAssets}</Text>
+              <Text style={assetStyles.metricLabel}>Total Assets</Text>
+            </View>
+            <View style={assetStyles.metricCard}>
+              <Text style={assetStyles.metricValue}>{atRiskAssets}</Text>
+              <Text style={assetStyles.metricLabel}>At-Risk Assets</Text>
+            </View>
+            <View style={assetStyles.metricCard}>
+              <Text style={assetStyles.metricValue}>{maintenanceDue}</Text>
+              <Text style={assetStyles.metricLabel}>Maintenance Due</Text>
+            </View>
+            <View style={assetStyles.metricCard}>
+              <Text style={assetStyles.metricValue}>{complianceIssues}</Text>
+              <Text style={assetStyles.metricLabel}>Compliance Issues</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Upcoming Risk Forecast */}
+        <View style={assetStyles.section}>
+          <Text style={assetStyles.sectionTitle}>Upcoming Risk Forecast</Text>
+          {riskForecasts.map((risk) => (
+            <View key={risk.id} style={assetStyles.riskItem}>
+              <View style={assetStyles.riskContent}>
+                <Text style={assetStyles.riskText}>
+                  {risk.asset} {risk.issue}{risk.days > 0 ? ` in ~${risk.days} days` : ''}
                 </Text>
               </View>
-              {userProfile?.role === 'admin' && (
-                <View style={styles.addAssetButtonContainer}>
-                  <Button
-                    variant="gradient"
-                    title="Add Asset"
-                    onPress={handleAddAsset}
-                    style={styles.addAssetButton}
-                  />
-                </View>
-              )}
+              <TouchableOpacity style={assetStyles.scheduleButton}>
+                <Text style={assetStyles.scheduleButtonText}>Schedule</Text>
+              </TouchableOpacity>
             </View>
-            <AssetsTable
-              key={refreshAssetsTable}
-              onEditAsset={handleEditAsset}
-              onAssetClick={handleAssetClick}
-            />
+          ))}
+        </View>
+
+        {/* Action Required Table */}
+        <View style={assetStyles.section}>
+          <View style={assetStyles.sectionHeaderRow}>
+            <Text style={assetStyles.sectionTitle}>Action Required</Text>
+            <TouchableOpacity onPress={handleAddAsset} style={assetStyles.addButton}>
+              <Ionicons name="add" size={20} color="#fff" />
+              <Text style={assetStyles.addButtonText}>Add Asset</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          {/* Tabs */}
+          <View style={assetStyles.tabsContainer}>
+            <TouchableOpacity
+              style={[assetStyles.tab, activeTab === 'overdue' && assetStyles.activeTab]}
+              onPress={() => setActiveTab('overdue')}
+            >
+              <Text style={[assetStyles.tabText, activeTab === 'overdue' && assetStyles.activeTabText]}>
+                Overdue
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[assetStyles.tab, activeTab === 'due_soon' && assetStyles.activeTab]}
+              onPress={() => setActiveTab('due_soon')}
+            >
+              <Text style={[assetStyles.tabText, activeTab === 'due_soon' && assetStyles.activeTabText]}>
+                Due Soon
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[assetStyles.tab, activeTab === 'completed' && assetStyles.activeTab]}
+              onPress={() => setActiveTab('completed')}
+            >
+              <Text style={[assetStyles.tabText, activeTab === 'completed' && assetStyles.activeTabText]}>
+                Completed
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[assetStyles.tab, activeTab === 'all_assets' && assetStyles.activeTab]}
+              onPress={() => setActiveTab('all_assets')}
+            >
+              <Text style={[assetStyles.tabText, activeTab === 'all_assets' && assetStyles.activeTabText]}>
+                All Assets
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Table */}
+          {activeTab === 'all_assets' ? (
+            // All Assets Table
+            <Table
+              columns={[
+                {
+                  header: 'Asset Name',
+                  dataKey: 'asset_name',
+                  width: 120,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'VIN',
+                  dataKey: 'vin',
+                  width: 150,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Make',
+                  dataKey: 'make',
+                  width: 100,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Model',
+                  dataKey: 'model',
+                  width: 120,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Year',
+                  dataKey: 'year',
+                  width: 70,
+                  textAlign: 'center',
+                },
+                {
+                  header: 'Color',
+                  dataKey: 'color',
+                  width: 100,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Mileage',
+                  dataKey: 'mileage',
+                  width: 100,
+                  textAlign: 'center',
+                  render: (value) => (
+                    <Text style={{ textAlign: 'center' }}>
+                      {value ? value.toLocaleString() : 'N/A'}
+                    </Text>
+                  ),
+                },
+                {
+                  header: 'Actions',
+                  dataKey: 'id',
+                  width: 80,
+                  textAlign: 'center',
+                  render: (_, row) => (
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEditAsset(row);
+                      }}
+                      style={assetStyles.editAssetButton}
+                    >
+                      <Ionicons name="create-outline" size={16} color={TEAL_GREEN} />
+                    </TouchableOpacity>
+                  ),
+                },
+              ]}
+              data={assets}
+              onRowPress={handleAssetClick}
+              emptyMessage="No assets found"
+              minWidth={800}
+              maxHeight={400}
+            />
+          ) : (
+            // Action Items Table
+            <Table
+              columns={[
+                {
+                  header: 'Asset',
+                  dataKey: 'asset',
+                  textAlign: 'center',
+                },
+                {
+                  header: 'Task',
+                  dataKey: 'task',
+                  textAlign: 'center',
+                },
+                {
+                  header: 'Due Date',
+                  dataKey: 'dueDate',
+                  textAlign: 'center',
+                },
+                {
+                  header: 'Assigned To',
+                  dataKey: 'assignedTo',
+                  textAlign: 'center',
+                },
+                {
+                  header: 'Status',
+                  dataKey: 'status',
+                  textAlign: 'center',
+                  cellStyle: assetStyles.statusCell,
+                },
+              ]}
+              data={filteredActionItems}
+              emptyMessage="No items in this category"
+              minWidth={600}
+              maxHeight={400}
+            />
+          )}
+
+          {/* Action Buttons - Only show for action item tabs */}
+          {activeTab !== 'all_assets' && (
+            <View style={assetStyles.actionButtonsRow}>
+              <TouchableOpacity style={assetStyles.actionButton}>
+                <Text style={assetStyles.actionButtonText}>Assign</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={assetStyles.actionButton}>
+                <Text style={assetStyles.actionButtonText}>Snooze</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={assetStyles.actionButton}>
+                <Text style={assetStyles.actionButtonText}>Complete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Bottom Panels */}
+        <View style={assetStyles.bottomPanels}>
+          <View style={assetStyles.panel}>
+            <Ionicons name="map-outline" size={32} color="#999" />
+            <Text style={assetStyles.panelText}>Location (Coming Soon)</Text>
+          </View>
+
+          <View style={assetStyles.panel}>
+            <Text style={assetStyles.panelTitle}>Recent Activity</Text>
+            {recentActivities.map((activity) => (
+              <View key={activity.id} style={assetStyles.activityItem}>
+                <Text style={assetStyles.activityText}>
+                  {activity.user}: {activity.action} - {activity.asset}
+                </Text>
+                <Text style={assetStyles.activityTime}>{activity.timestamp}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+
       <BottomNavBar />
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
       <AssetModal
@@ -558,87 +718,14 @@ export default function AssetsScreen() {
         onClose={handleCloseModal}
         onSave={handleSaveAsset}
         editingAsset={editingAsset}
-        loading={loading}
+        loading={false}
       />
       <AssetBottomSheet
         visible={showBottomSheet}
         asset={selectedAsset}
         onClose={handleCloseBottomSheet}
         onEdit={handleEditAsset}
-        onPhotosUpdate={userProfile?.role === 'admin' ? handlePhotosUpdate : undefined}
       />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  welcomeSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-  },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    lineHeight: 24,
-  },
-  contentSection: {
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 8,
-  },
-  sectionText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-  },
-  sectionHeaderText: {
-    flex: 1,
-    minWidth: 200,
-    marginRight: 12,
-    marginBottom: 8,
-  },
-  addAssetButtonContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-start',
-    marginBottom: 8,
-  },
-  addAssetButton: {
-    minWidth: 120,
-    maxWidth: 150,
-  },
-  loadingFullContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-});
-
-
