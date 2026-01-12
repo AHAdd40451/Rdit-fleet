@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   ViewStyle,
   TextStyle,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingBar } from './LoadingBar';
 import { tableStyles } from '../../app/styles/table.styles';
 
@@ -95,12 +97,113 @@ export function Table<T = any>({
     return row[column.dataKey as keyof T];
   };
 
-  // Loading state
+  // Skeleton row component
+  const SkeletonRow = ({ columns: skeletonColumns }: { columns: TableColumn<T>[] }) => {
+    const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    }, [shimmerAnim]);
+
+    const translateX = shimmerAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-200, 200],
+    });
+
+    return (
+      <View style={[tableStyles.row]}>
+        {skeletonColumns.map((column, colIndex) => (
+          <View
+            key={`skeleton-cell-${colIndex}`}
+            style={[
+              tableStyles.cell,
+              column.width ? { width: column.width } : { flex: 1 },
+              { alignItems: column.textAlign === 'center' ? 'center' : 'flex-start' },
+            ]}
+          >
+            <View style={tableStyles.skeletonCell}>
+              <Animated.View
+                style={[
+                  tableStyles.skeletonShimmer,
+                  {
+                    transform: [{ translateX }],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={['transparent', 'rgba(255, 255, 255, 0.6)', 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </Animated.View>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  // Loading state with skeleton
   if (loading) {
     return (
-      <View style={[tableStyles.loadingContainer, loadingContainerStyle]}>
-        <LoadingBar variant="spinner" />
-        <Text style={tableStyles.loadingText}>Loading...</Text>
+      <View style={[tableStyles.container, containerStyle]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={showsHorizontalScrollIndicator}
+          contentContainerStyle={tableStyles.horizontalScrollContent}
+        >
+          <View style={[tableStyles.tableWrapper, { minWidth }]}>
+            {/* Header Row */}
+            <View style={[tableStyles.headerRow, headerRowStyle]}>
+              {columns.map((column, index) => (
+                <View
+                  key={`header-${index}`}
+                  style={[
+                    tableStyles.headerCell,
+                    column.width ? { width: column.width } : { flex: 1 },
+                    column.headerStyle,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      tableStyles.headerText,
+                      { textAlign: column.textAlign || 'left' },
+                    ]}
+                  >
+                    {column.header}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Skeleton Rows */}
+            <ScrollView
+              style={[tableStyles.scrollView, { maxHeight }]}
+              showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+              nestedScrollEnabled={true}
+            >
+              {[1, 2, 3, 4, 5].map((index) => (
+                <SkeletonRow key={`skeleton-row-${index}`} columns={columns} />
+              ))}
+            </ScrollView>
+          </View>
+        </ScrollView>
       </View>
     );
   }

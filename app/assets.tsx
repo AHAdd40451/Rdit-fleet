@@ -73,7 +73,9 @@ export default function AssetsScreen() {
   const { showToast } = useToast();
   
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [overdueAssets, setOverdueAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOverdue, setLoadingOverdue] = useState(false);
   const [checkingCompany, setCheckingCompany] = useState(true);
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -88,6 +90,113 @@ export default function AssetsScreen() {
       fetchAssets(session, userProfile, setLoading, setAssets, showToast);
     }
   }, [session, userProfile, checkingCompany]);
+
+  // Fetch overdue assets (last updated 2 days ago)
+  const fetchOverdueAssets = async () => {
+    if (!session?.user?.id || userProfile?.role !== 'admin') {
+      return;
+    }
+
+    try {
+      setLoadingOverdue(true);
+      let filterUserId = session?.user?.id;
+      
+      if (!filterUserId && userProfile) {
+        const identifier = userProfile.phone_no || `user_${userProfile.id}`;
+        filterUserId = generateUUIDFromString(identifier);
+      }
+
+      if (!filterUserId) {
+        setOverdueAssets([]);
+        setLoadingOverdue(false);
+        return;
+      }
+
+      // Calculate date 2 days ago (end of that day - anything before this is at least 2 days old)
+      const twoDaysAgoEnd = new Date();
+      twoDaysAgoEnd.setDate(twoDaysAgoEnd.getDate() - 2);
+      twoDaysAgoEnd.setHours(23, 59, 59, 999);
+
+      // First, get all assets for this user
+      const { data: allUserAssets, error: assetsFetchError } = await supabase
+        .from('assets')
+        .select('id')
+        .eq('user_id', filterUserId);
+
+      if (assetsFetchError) {
+        throw assetsFetchError;
+      }
+
+      if (!allUserAssets || allUserAssets.length === 0) {
+        setOverdueAssets([]);
+        setLoadingOverdue(false);
+        return;
+      }
+
+      const assetIds = allUserAssets.map(a => a.id);
+
+      // For each asset, find the most recent update log
+      // Then filter to only those where the most recent update was at least 2 days ago
+      const overdueAssetIds: string[] = [];
+
+      for (const assetId of assetIds) {
+        // Get the most recent update log for this asset
+        const { data: latestLog, error: logError } = await supabase
+          .from('asset_logs')
+          .select('created_at')
+          .eq('asset_id', assetId)
+          .eq('action', 'updated')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (logError && logError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          console.error(`Error fetching log for asset ${assetId}:`, logError);
+          continue;
+        }
+
+        if (latestLog) {
+          const logDate = new Date(latestLog.created_at);
+          // Check if the most recent update was at least 2 days ago (2 or more days old)
+          if (logDate <= twoDaysAgoEnd) {
+            overdueAssetIds.push(assetId);
+          }
+        }
+      }
+
+      if (overdueAssetIds.length === 0) {
+        setOverdueAssets([]);
+        setLoadingOverdue(false);
+        return;
+      }
+
+      // Fetch full asset details for overdue assets
+      const { data: overdueAssetsData, error: overdueError } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('user_id', filterUserId)
+        .in('id', overdueAssetIds);
+
+      if (overdueError) {
+        throw overdueError;
+      }
+
+      setOverdueAssets(overdueAssetsData || []);
+    } catch (err: any) {
+      console.error('Error fetching overdue assets:', err);
+      showToast(err.message || 'Failed to fetch overdue assets', 'error');
+      setOverdueAssets([]);
+    } finally {
+      setLoadingOverdue(false);
+    }
+  };
+
+  // Fetch overdue assets when overdue tab is active
+  useEffect(() => {
+    if (activeTab === 'overdue' && !checkingCompany) {
+      fetchOverdueAssets();
+    }
+  }, [activeTab, checkingCompany, session, userProfile]);
 
 
   // Check if company exists for admin user
@@ -636,8 +745,84 @@ export default function AssetsScreen() {
               minWidth={800}
               maxHeight={400}
             />
+          ) : activeTab === 'overdue' ? (
+            // Overdue Assets Table (assets last updated 2 days ago)
+            <Table
+              columns={[
+                {
+                  header: 'Asset Name',
+                  dataKey: 'asset_name',
+                  width: 120,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'VIN',
+                  dataKey: 'vin',
+                  width: 150,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Make',
+                  dataKey: 'make',
+                  width: 100,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Model',
+                  dataKey: 'model',
+                  width: 120,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Year',
+                  dataKey: 'year',
+                  width: 70,
+                  textAlign: 'center',
+                },
+                {
+                  header: 'Color',
+                  dataKey: 'color',
+                  width: 100,
+                  textAlign: 'left',
+                },
+                {
+                  header: 'Mileage',
+                  dataKey: 'mileage',
+                  width: 100,
+                  textAlign: 'center',
+                  render: (value) => (
+                    <Text style={{ textAlign: 'center' }}>
+                      {value ? value.toLocaleString() : 'N/A'}
+                    </Text>
+                  ),
+                },
+                {
+                  header: 'Actions',
+                  dataKey: 'id',
+                  width: 80,
+                  textAlign: 'center',
+                  render: (_, row) => (
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEditAsset(row);
+                      }}
+                      style={assetStyles.editAssetButton}
+                    >
+                      <Ionicons name="create-outline" size={16} color={TEAL_GREEN} />
+                    </TouchableOpacity>
+                  ),
+                },
+              ]}
+              data={overdueAssets}
+              loading={loadingOverdue}
+              onRowPress={handleAssetClick}
+              emptyMessage="No overdue assets found (assets last updated at least 2 days ago)"
+              minWidth={800}
+              maxHeight={400}
+            />
           ) : (
-            // Action Items Table
+            // Action Items Table (for due_soon and completed tabs)
             <Table
               columns={[
                 {
@@ -674,8 +859,8 @@ export default function AssetsScreen() {
             />
           )}
 
-          {/* Action Buttons - Only show for action item tabs */}
-          {activeTab !== 'all_assets' && (
+          {/* Action Buttons - Only show for action item tabs (not overdue or all_assets) */}
+          {activeTab !== 'all_assets' && activeTab !== 'overdue' && (
             <View style={assetStyles.actionButtonsRow}>
               <TouchableOpacity style={assetStyles.actionButton}>
                 <Text style={assetStyles.actionButtonText}>Assign</Text>

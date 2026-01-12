@@ -99,4 +99,19 @@ export const tableStyles = StyleSheet.create({
       fontSize: 14,
       color: '#666',
     },
+    skeletonCell: {
+      height: 16,
+      backgroundColor: '#E0E0E0',
+      borderRadius: 4,
+      overflow: 'hidden',
+      width: '80%',
+    },
+    skeletonShimmer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100%',
+    },
   });
