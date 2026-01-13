@@ -152,6 +152,25 @@ export const assetStyles = StyleSheet.create({
     riskText: {
       fontSize: 14,
       color: '#333',
+      fontWeight: '600',
+    },
+    riskSubText: {
+      fontSize: 12,
+      color: '#666',
+      marginTop: 4,
+    },
+    emptyState: {
+      padding: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: '#999',
+      textAlign: 'center',
+    },
+    assetsScrollContainer: {
+      maxHeight: 240, // Approximately 3 items (each ~80px tall)
     },
     scheduleButton: {
       paddingVertical: 6,

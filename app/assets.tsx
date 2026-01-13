@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import { AssetModal } from '../src/components/AssetModal';
 import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
+import { ReminderModal } from '../src/components/ReminderModal';
 import { Sidebar } from '../src/components/Sidebar';
 import { TopBar } from '../src/components/TopBar';
 import { generateUUIDFromString } from '../src/utils/generateUUID';
@@ -83,6 +84,9 @@ export default function AssetsScreen() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'overdue' | 'due_soon' | 'completed' | 'all_assets'>('all_assets');
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [selectedAssetForReminder, setSelectedAssetForReminder] = useState<Asset | null>(null);
+  const [savingReminder, setSavingReminder] = useState(false);
 
   // Fetch assets
   useEffect(() => {
@@ -254,12 +258,7 @@ export default function AssetsScreen() {
     : 100;
   const fleetHealthPercentage = Math.max(0, Math.min(100, fleetHealth));
 
-  // Mock risk forecast data (in real app, this would come from database)
-  const riskForecasts: RiskForecast[] = [
-    { id: '1', asset: 'Truck #14', issue: 'Brake Wear', days: 18 },
-    { id: '2', asset: 'Tractor #7', issue: 'Battery Warning', days: 0 },
-    { id: '3', asset: 'Trailer #22', issue: 'Tire Replacement Soon', days: 0 },
-  ];
+  // Use actual assets for risk forecast section
 
   // Mock action items (in real app, this would come from database)
   const actionItems: ActionItem[] = [
@@ -519,6 +518,49 @@ export default function AssetsScreen() {
     setSelectedAsset(null);
   };
 
+  const handleScheduleReminder = (asset: Asset) => {
+    setSelectedAssetForReminder(asset);
+    setShowReminderModal(true);
+  };
+
+  const handleSaveReminder = async (reminderData: {
+    reminder_type: string;
+    reminder_date: string;
+    asset_id: string;
+    assigned_id: string;
+    interval_days: number;
+  }) => {
+    try {
+      setSavingReminder(true);
+
+      // Insert reminder into database
+      const { error: insertError } = await supabase
+        .from('reminders')
+        .insert([reminderData]);
+
+      if (insertError) {
+        throw new Error(insertError.message || 'Failed to create reminder.');
+      }
+
+      showToast('Reminder scheduled successfully!', 'success', 2000);
+      setShowReminderModal(false);
+      setSelectedAssetForReminder(null);
+    } catch (error: any) {
+      console.error('Save reminder error:', error);
+      showToast(
+        error.message || 'An error occurred. Please try again.',
+        'error'
+      );
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleCloseReminderModal = () => {
+    setShowReminderModal(false);
+    setSelectedAssetForReminder(null);
+  };
+
   // Fleet Health Gauge Component
   const FleetHealthGauge = ({ percentage }: { percentage: number }) => {
     const getColor = () => {
@@ -608,19 +650,40 @@ export default function AssetsScreen() {
 
         {/* Upcoming Risk Forecast */}
         <View style={assetStyles.section}>
-          <Text style={assetStyles.sectionTitle}>Upcoming Risk Forecast</Text>
-          {riskForecasts.map((risk) => (
-            <View key={risk.id} style={assetStyles.riskItem}>
-              <View style={assetStyles.riskContent}>
-                <Text style={assetStyles.riskText}>
-                  {risk.asset} {risk.issue}{risk.days > 0 ? ` in ~${risk.days} days` : ''}
-                </Text>
-              </View>
-              <TouchableOpacity style={assetStyles.scheduleButton}>
-                <Text style={assetStyles.scheduleButtonText}>Schedule</Text>
-              </TouchableOpacity>
+          <Text style={assetStyles.sectionTitle}>All Assets</Text>
+          {assets.length === 0 ? (
+            <View style={assetStyles.emptyState}>
+              <Text style={assetStyles.emptyStateText}>No assets found. Add your first asset to get started.</Text>
             </View>
-          ))}
+          ) : (
+            <ScrollView 
+              style={assetStyles.assetsScrollContainer}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              {assets.map((asset) => (
+                <View key={asset.id} style={assetStyles.riskItem}>
+                  <View style={assetStyles.riskContent}>
+                    <Text style={assetStyles.riskText}>
+                      {asset.asset_name}
+                    </Text>
+                    <Text style={assetStyles.riskSubText}>
+                      {asset.make} {asset.model} {asset.year ? `(${asset.year})` : ''} • {asset.color}
+                    </Text>
+                    {asset.vin && (
+                      <Text style={assetStyles.riskSubText}>VIN: {asset.vin}</Text>
+                    )}
+                  </View>
+                  <TouchableOpacity 
+                    style={assetStyles.scheduleButton}
+                    onPress={() => handleScheduleReminder(asset)}
+                  >
+                    <Text style={assetStyles.scheduleButtonText}>Schedule</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Action Required Table */}
@@ -910,6 +973,14 @@ export default function AssetsScreen() {
         asset={selectedAsset}
         onClose={handleCloseBottomSheet}
         onEdit={handleEditAsset}
+      />
+      <ReminderModal
+        visible={showReminderModal}
+        onClose={handleCloseReminderModal}
+        onSave={handleSaveReminder}
+        assetId={selectedAssetForReminder?.id}
+        assetName={selectedAssetForReminder?.asset_name}
+        loading={savingReminder}
       />
     </SafeAreaView>
   );
