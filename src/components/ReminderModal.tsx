@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Input } from './Input';
 import { supabase } from '../../lib/supabase';
 
@@ -57,6 +58,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [intervalDays, setIntervalDays] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [errors, setErrors] = useState<{
     reminder_type?: string;
     reminder_date?: string;
@@ -92,6 +95,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setReminderTime('');
       setAssignedId('');
       setIntervalDays('0');
+      setSelectedDate(new Date());
+      setShowDatePicker(false);
       setErrors({});
     }
   }, [visible, defaultReminderType]);
@@ -197,6 +202,28 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     return `${hours}:${minutes}`;
   };
 
+  const handleDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (event.type === 'dismissed') {
+        return;
+      }
+    }
+    
+    if (date) {
+      setSelectedDate(date);
+      const formattedDate = formatDateForInput(date);
+      setReminderDate(formattedDate);
+      setErrors({ ...errors, reminder_date: undefined });
+    }
+  };
+
+  const openDatePicker = () => {
+    if (!loading) {
+      setShowDatePicker(true);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -272,19 +299,44 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Reminder Date *</Text>
-                  <Input
-                    placeholder="YYYY-MM-DD"
-                    value={reminderDate}
-                    onChangeText={(text) => {
-                      setReminderDate(text);
-                      setErrors({ ...errors, reminder_date: undefined });
-                    }}
-                    keyboardType="default"
-                    style={errors.reminder_date ? styles.inputError : undefined}
-                    editable={!loading}
-                  />
+                  <TouchableOpacity
+                    onPress={openDatePicker}
+                    disabled={loading}
+                    style={[
+                      styles.datePickerButton,
+                      errors.reminder_date && styles.inputError,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.datePickerText,
+                      !reminderDate && styles.datePickerPlaceholder
+                    ]}>
+                      {reminderDate || 'Select Date (YYYY-MM-DD)'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={20} color="#666" />
+                  </TouchableOpacity>
                   {errors.reminder_date && (
                     <Text style={styles.errorText}>{errors.reminder_date}</Text>
+                  )}
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={selectedDate}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={handleDateChange}
+                      minimumDate={new Date()}
+                      style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
+                    />
+                  )}
+                  {Platform.OS === 'ios' && showDatePicker && (
+                    <View style={styles.iosDatePickerContainer}>
+                      <TouchableOpacity
+                        onPress={() => setShowDatePicker(false)}
+                        style={styles.iosDatePickerDoneButton}
+                      >
+                        <Text style={styles.iosDatePickerDoneText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
 
@@ -564,5 +616,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    minHeight: 48,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+  datePickerPlaceholder: {
+    color: '#999',
+  },
+  iosDatePicker: {
+    height: 200,
+  },
+  iosDatePickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 8,
+  },
+  iosDatePickerDoneButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  iosDatePickerDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#14AB98',
   },
 });

@@ -38,62 +38,41 @@ Deno.serve(async (req: Request) => {
     // Create Supabase client
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Calculate the date 2 days ago
-    const twoDaysAgo = new Date()
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-    twoDaysAgo.setHours(0, 0, 0, 0) // Set to start of day for consistent comparison
+    // Get current date/time for comparison
+    const now = new Date()
 
-    // Get all update logs for all assets with notification_type, ordered by most recent first
-    // We need to find the most recent update for each asset that has a notification_type
-    // Fetch full asset_logs data including all fields
-    const { data: allUpdateLogs, error: logsError } = await supabaseClient
-      .from('asset_logs')
-      .select('*') // Get all fields from asset_logs
-      .eq('action', 'updated')
-      .not('notification_type', 'is', null) // Only get logs with notification_type
-      .order('created_at', { ascending: false })
+    // Get asset_id from request body, or use default
+    let requestBody: any = {}
+    try {
+      requestBody = await req.json()
+    } catch {
+      // If no body or invalid JSON, use empty object
+    }
+    
+    // Use asset_id from request body, or default to the specific asset
+    const targetAssetId = requestBody.asset_id || 'd5efced0-102d-4611-b546-c5b5c505999c'
 
-    if (logsError) {
-      console.error('Error fetching asset logs:', logsError)
-      throw logsError
+    // Get reminders for the specific asset where reminder_date has passed (reminder_date <= now)
+    const { data: dueReminders, error: remindersError } = await supabaseClient
+      .from('reminders')
+      .select('*')
+      .eq('asset_id', targetAssetId)
+      .lte('reminder_date', now.toISOString())
+
+    if (remindersError) {
+      console.error('Error fetching reminders:', remindersError)
+      throw remindersError
     }
 
-    // Group by asset_id and get the most recent update log for each asset
-    // Store the full log data for assets updated at least 2 days ago
-    const assetLastUpdateMap = new Map<string, any>()
-    const assetLogsToReturn: any[] = []
-    
-    allUpdateLogs?.forEach((log: any) => {
-      const logDate = new Date(log.created_at)
-      
-      // Only consider the most recent log for each asset
-      if (!assetLastUpdateMap.has(log.asset_id)) {
-        assetLastUpdateMap.set(log.asset_id, log)
-        
-        // If this log is at least 2 days old, add it to the return list
-        if (logDate <= twoDaysAgo) {
-          assetLogsToReturn.push(log)
-        }
-      }
-    })
-
-    // Create a simplified list for notification processing
-    const assetsToNotify: Array<{ assetId: string; notificationType: string }> = []
-    assetLogsToReturn.forEach((log) => {
-      assetsToNotify.push({ 
-        assetId: log.asset_id, 
-        notificationType: log.notification_type 
-      })
-    })
-
-    if (assetsToNotify.length === 0) {
+    if (!dueReminders || dueReminders.length === 0) {
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'No assets were updated at least two days ago with notification types',
-          assetLogs: [],
+          message: `No reminders are due at this time for asset ${targetAssetId}`,
+          assetId: targetAssetId,
+          reminders: [],
           notificationsCreated: 0,
-          cutoffDate: twoDaysAgo.toISOString(),
+          currentTime: now.toISOString(),
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -101,8 +80,9 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Fetch the actual assets to get their user_id (admin who created them)
-    const assetIds = assetsToNotify.map(a => a.assetId)
+    // Fetch the actual assets to get their user_id (admin who created them) and asset_name
+    // Get unique asset IDs from all due reminders
+    const assetIds = [...new Set(dueReminders.map((r: any) => r.asset_id))]
     const { data: assets, error: assetsError } = await supabaseClient
       .from('assets')
       .select('id, asset_name, user_id')
@@ -117,10 +97,10 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'No assets found for the filtered asset IDs, but returning asset logs',
-          assetLogs: assetLogsToReturn, // Still return the asset logs even if assets not found
+          message: 'No assets found for the due reminders',
+          reminders: dueReminders,
           notificationsCreated: 0,
-          cutoffDate: twoDaysAgo.toISOString(),
+          currentTime: now.toISOString(),
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -128,77 +108,152 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Create a map of asset_id to notification_type
-    const assetNotificationTypeMap = new Map<string, string>()
-    assetsToNotify.forEach(({ assetId, notificationType }) => {
-      assetNotificationTypeMap.set(assetId, notificationType)
+    // Create a map of asset_id to asset data for quick lookup
+    const assetsMap = new Map<string, any>()
+    assets.forEach((asset: any) => {
+      assetsMap.set(asset.id, asset)
     })
 
-    // For each asset, find all users associated with it (users where userId matches asset.user_id)
-    // Then create notifications for those users
+    // Process each reminder individually to allow different reminder types to create different notifications
     let notificationsCreated = 0
     const notificationErrors: string[] = []
+    const processedReminders: any[] = []
+    const diagnosticInfo: any[] = []
 
-    for (const asset of assets) {
-      const notificationType = assetNotificationTypeMap.get(asset.id) || 'General Inspection'
+    for (const reminder of dueReminders) {
+      const asset = assetsMap.get(reminder.asset_id)
       
-      // Find all users where userId matches the asset's user_id (admin UUID)
-      // This finds all regular users created by that admin
-      // Note: asset.user_id is the UUID of the admin who created the asset
-      // users.userId is the UUID field that points to the admin
+      if (!asset) {
+        diagnosticInfo.push({
+          assetId: reminder.asset_id,
+          reminderId: reminder.id,
+          issue: 'Asset not found for this reminder'
+        })
+        continue
+      }
+
+      console.log(`Processing reminder ${reminder.id} for asset ${asset.id}, reminder_type: ${reminder.reminder_type}, assigned_id: ${reminder.assigned_id}`)
+
+      // Find the user assigned to this reminder (assigned_id is the UUID of the admin)
+      // Then find all regular users created by that admin
       const { data: users, error: usersError } = await supabaseClient
         .from('users')
         .select('id')
-        .eq('userId', asset.user_id)
+        .eq('userId', reminder.assigned_id)
 
       if (usersError) {
-        console.error(`Error fetching users for asset ${asset.id}:`, usersError)
-        notificationErrors.push(`Asset ${asset.id}: ${usersError.message}`)
+        console.error(`Error fetching users for reminder ${reminder.id} (asset ${asset.id}):`, usersError)
+        notificationErrors.push(`Reminder ${reminder.id}: ${usersError.message}`)
+        diagnosticInfo.push({
+          assetId: asset.id,
+          reminderId: reminder.id,
+          issue: 'Error fetching users',
+          error: usersError.message
+        })
         continue
       }
 
       if (!users || users.length === 0) {
-        console.warn(`No users found for asset ${asset.id} with user_id ${asset.user_id}`)
+        console.warn(`No users found for reminder ${reminder.id} with assigned_id ${reminder.assigned_id}`)
+        diagnosticInfo.push({
+          assetId: asset.id,
+          reminderId: reminder.id,
+          issue: 'No users found',
+          assignedId: reminder.assigned_id,
+          message: `No users found with userId matching ${reminder.assigned_id}`
+        })
         continue
       }
 
-      // Check for existing notifications to avoid duplicates
-      // Check if notifications already exist for these users and this asset within the last 24 hours
-      const userIds = users.map(u => u.id)
-      const oneDayAgo = new Date()
-      oneDayAgo.setDate(oneDayAgo.getDate() - 1)
-      
-      const { data: existingNotifications, error: checkError } = await supabaseClient
+      console.log(`Found ${users.length} users for reminder ${reminder.id}`)
+
+      const userIds = users.map((u: any) => u.id)
+      const reminderType = reminder.reminder_type || 'maintenance'
+      const expectedMessagePattern = `requires ${reminderType}`
+      const intervalDays = reminder.interval_days || 0
+
+      // Get all notifications for this reminder (not just last 24 hours) to check interval logic
+      const { data: allNotifications, error: checkError } = await supabaseClient
         .from('notifications')
-        .select('user_id, asset_id')
+        .select('user_id, asset_id, message, created_at')
         .in('user_id', userIds)
         .eq('asset_id', asset.id)
         .eq('type', 'maintenance_reminder')
-        .gte('created_at', oneDayAgo.toISOString())
+        .gte('created_at', reminder.reminder_date) // Only check notifications created after the reminder was scheduled
 
       if (checkError) {
-        console.warn(`Error checking existing notifications for asset ${asset.id}:`, checkError)
+        console.warn(`Error checking existing notifications for reminder ${reminder.id}:`, checkError)
         // Continue anyway - we'll try to create notifications
       }
 
-      // Filter out users who already have a notification for this asset
-      const existingUserIds = new Set(
-        existingNotifications?.map(n => n.user_id) || []
+      // Filter notifications that match this reminder type
+      const matchingNotifications = (allNotifications || []).filter(
+        (n: any) => n.message && n.message.includes(expectedMessagePattern)
       )
-      
-      const usersToNotify = users.filter(user => !existingUserIds.has(user.id))
+
+      // Determine which users should receive notifications based on interval logic
+      const usersToNotify: any[] = []
+
+      for (const user of users) {
+        // Get all notifications for this specific user for this reminder
+        const userNotifications = matchingNotifications.filter(
+          (n: any) => n.user_id === user.id
+        )
+
+        if (intervalDays === 0) {
+          // One-time reminder: only create if no notification exists
+          if (userNotifications.length === 0) {
+            usersToNotify.push(user)
+          }
+        } else {
+          // Interval-based reminder: check if we need to create another notification
+          if (userNotifications.length === 0) {
+            // No notifications yet, create the first one
+            usersToNotify.push(user)
+          } else {
+            // Check the last notification date
+            const sortedNotifications = userNotifications.sort(
+              (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
+            const lastNotification = sortedNotifications[0]
+            const lastNotificationDate = new Date(lastNotification.created_at)
+            
+            // Calculate days since last notification
+            const daysSinceLastNotification = Math.floor(
+              (now.getTime() - lastNotificationDate.getTime()) / (1000 * 60 * 60 * 24)
+            )
+
+            // Check if we've created fewer notifications than the interval allows
+            // and if it's been at least 1 day since the last notification
+            if (userNotifications.length < intervalDays && daysSinceLastNotification >= 1) {
+              usersToNotify.push(user)
+            }
+          }
+        }
+      }
 
       if (usersToNotify.length === 0) {
-        console.log(`All users already have notifications for asset ${asset.id}, skipping`)
+        console.log(`No users need notifications for reminder ${reminder.id} (asset ${asset.id}, reminder_type: ${reminderType}, interval: ${intervalDays}), skipping`)
+        diagnosticInfo.push({
+          assetId: asset.id,
+          reminderId: reminder.id,
+          reminderType: reminderType,
+          intervalDays: intervalDays,
+          issue: 'No users need notifications at this time',
+          totalUsers: users.length,
+          existingNotifications: matchingNotifications.length
+        })
         continue
       }
 
-      // Create notifications for these users
+      console.log(`Creating notifications for ${usersToNotify.length} users for reminder ${reminder.id} (asset ${asset.id}, reminder_type: ${reminderType}, interval: ${intervalDays})`)
+
+      // Create notifications for these users - one notification per reminder type per asset
       // Match the exact schema: user_id (integer), message (text), type (text), asset_id (uuid), read (boolean)
       // Note: id and created_at are auto-generated, so we don't include them
-      const notificationData = usersToNotify.map(user => ({
+      const notificationData = usersToNotify.map((user: any) => ({
         user_id: user.id, // INTEGER - user's id from users table
-        message: `Maintenance reminder: ${asset.asset_name || 'Asset'} requires ${notificationType}`, // TEXT - required
+        message: `Maintenance reminder: ${asset.asset_name || 'Asset'} requires ${reminderType}`, // TEXT - required, includes reminder_type
         type: 'maintenance_reminder', // TEXT - required
         asset_id: asset.id, // UUID - nullable
         read: false, // BOOLEAN - defaults to false
@@ -210,25 +265,37 @@ Deno.serve(async (req: Request) => {
         .select('id') // Return the inserted IDs to confirm insertion
 
       if (insertError) {
-        console.error(`Error creating notifications for asset ${asset.id}:`, insertError)
+        console.error(`Error creating notifications for reminder ${reminder.id} (asset ${asset.id}):`, insertError)
         console.error('Notification data that failed:', JSON.stringify(notificationData, null, 2))
-        notificationErrors.push(`Asset ${asset.id}: ${insertError.message}`)
+        notificationErrors.push(`Reminder ${reminder.id}: ${insertError.message}`)
+        diagnosticInfo.push({
+          assetId: asset.id,
+          reminderId: reminder.id,
+          reminderType: reminderType,
+          issue: 'Insert error',
+          error: insertError.message,
+          notificationDataCount: notificationData.length
+        })
       } else {
         const count = insertedNotifications?.length || notificationData.length
         notificationsCreated += count
-        console.log(`Successfully created ${count} notifications for asset ${asset.id} (${asset.asset_name})`)
+        processedReminders.push(reminder)
+        console.log(`Successfully created ${count} notifications for reminder ${reminder.id} (asset ${asset.id}, ${asset.asset_name}, reminder_type: ${reminderType})`)
       }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Found ${assetLogsToReturn.length} asset logs updated at least two days ago. Created ${notificationsCreated} notifications.`,
-        assetLogs: assetLogsToReturn, // Return the full asset logs data
+        message: `Found ${dueReminders.length} reminders that are due for asset ${targetAssetId}. Created ${notificationsCreated} notifications.`,
+        assetId: targetAssetId,
+        reminders: processedReminders, // Return the processed reminders
+        totalDueReminders: dueReminders.length,
         notificationsCreated,
         assetsProcessed: assets.length,
-        cutoffDate: twoDaysAgo.toISOString(),
+        currentTime: now.toISOString(),
         errors: notificationErrors.length > 0 ? notificationErrors : undefined,
+        diagnostic: diagnosticInfo.length > 0 ? diagnosticInfo : undefined, // Add diagnostic info
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
