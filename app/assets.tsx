@@ -524,16 +524,16 @@ export default function AssetsScreen() {
   };
 
   const handleSaveReminder = async (reminderData: {
-    reminder_type: string;
+    reminder_type: string[];
     reminder_date: string;
     asset_id: string;
-    assigned_id: string;
+    assigned_id: string | null;
     interval_days: number;
   }) => {
     try {
       setSavingReminder(true);
 
-      // Insert reminder into database
+      // Insert single reminder with array of reminder types
       const { error: insertError } = await supabase
         .from('reminders')
         .insert([reminderData]);
@@ -542,7 +542,12 @@ export default function AssetsScreen() {
         throw new Error(insertError.message || 'Failed to create reminder.');
       }
 
-      showToast('Reminder scheduled successfully!', 'success', 2000);
+      const count = reminderData.reminder_type.length;
+      showToast(
+        `Reminder scheduled with ${count} type${count > 1 ? 's' : ''} successfully!`,
+        'success',
+        2000
+      );
       setShowReminderModal(false);
       setSelectedAssetForReminder(null);
     } catch (error: any) {

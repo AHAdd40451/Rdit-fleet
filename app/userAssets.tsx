@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
 import { AssetModal } from '../src/components/AssetModal';
+import { ChecklistModal } from '../src/components/ChecklistModal';
 import { TopBar } from '../src/components/TopBar';
 import { Sidebar } from '../src/components/Sidebar';
 import { generateUUIDFromString } from '../src/utils/generateUUID';
@@ -41,6 +42,7 @@ interface Asset {
   photo?: string | null;
   photos?: string[] | null;
   state?: string | null;
+  reminders?: string | null;
 }
 
 export default function UserAssetsScreen() {
@@ -56,6 +58,9 @@ export default function UserAssetsScreen() {
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [checklistAsset, setChecklistAsset] = useState<Asset | null>(null);
+  const [savingChecklist, setSavingChecklist] = useState(false);
 
   // Fetch user assets
   useEffect(() => {
@@ -163,15 +168,8 @@ export default function UserAssetsScreen() {
   };
 
   const handleChecklist = (asset: Asset) => {
-    // Navigate to checklist page or show checklist modal
-    // For now, show a placeholder alert
-    Alert.alert(
-      'Checklist',
-      `Checklist for ${asset.asset_name}`,
-      [{ text: 'OK' }]
-    );
-    // TODO: Implement checklist navigation
-    // router.push(`/checklist/${asset.id}`);
+    setChecklistAsset(asset);
+    setShowChecklistModal(true);
   };
 
   const handleCloseBottomSheet = () => {
@@ -343,6 +341,51 @@ export default function UserAssetsScreen() {
     }
   };
 
+  const handleCloseChecklistModal = () => {
+    if (!savingChecklist) {
+      setShowChecklistModal(false);
+      setChecklistAsset(null);
+    }
+  };
+
+  const handleSaveChecklist = async (reminders: string) => {
+    if (!checklistAsset?.id) return;
+
+    try {
+      setSavingChecklist(true);
+
+      // Update the asset with new reminders
+      const { error: updateError } = await supabase
+        .from('assets')
+        .update({ reminders })
+        .eq('id', checklistAsset.id);
+
+      if (updateError) {
+        throw new Error(updateError.message || 'Failed to update checklist.');
+      }
+
+      // Update local state
+      const updatedAssets = userAssets.map((asset) =>
+        asset.id === checklistAsset.id
+          ? { ...asset, reminders }
+          : asset
+      );
+      setUserAssets(updatedAssets);
+
+      showToast('Checklist updated successfully!', 'success', 2000);
+      setShowChecklistModal(false);
+      setChecklistAsset(null);
+    } catch (error: any) {
+      console.error('Save checklist error:', error);
+      showToast(
+        error.message || 'An error occurred. Please try again.',
+        'error'
+      );
+    } finally {
+      setSavingChecklist(false);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -472,6 +515,13 @@ export default function UserAssetsScreen() {
         onSave={handleSaveAsset}
         editingAsset={editingAsset}
         loading={loading}
+      />
+      <ChecklistModal
+        visible={showChecklistModal}
+        onClose={handleCloseChecklistModal}
+        onSave={handleSaveChecklist}
+        asset={checklistAsset}
+        loading={savingChecklist}
       />
     </SafeAreaView>
   );

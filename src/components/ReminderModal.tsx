@@ -30,10 +30,10 @@ interface ReminderModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (reminderData: {
-    reminder_type: string;
+    reminder_type: string[];
     reminder_date: string;
     asset_id: string;
-    assigned_id: string;
+    assigned_id: string | null;
     interval_days: number;
   }) => Promise<void>;
   assetId?: string;
@@ -51,19 +51,19 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   defaultReminderType = '',
   loading = false,
 }) => {
-  const [reminderType, setReminderType] = useState('');
+  // const [reminderType, setReminderType] = useState(''); // Commented out - now creating reminders for all types
   const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('');
-  const [assignedId, setAssignedId] = useState('');
+  // const [assignedId, setAssignedId] = useState(''); // Commented out - removed assign to field
   const [intervalDays, setIntervalDays] = useState('');
-  const [users, setUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  // const [users, setUsers] = useState<User[]>([]); // Commented out - removed assign to field
+  // const [loadingUsers, setLoadingUsers] = useState(false); // Commented out - removed assign to field
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [errors, setErrors] = useState<{
-    reminder_type?: string;
+    // reminder_type?: string; // Commented out - no longer needed
     reminder_date?: string;
-    assigned_id?: string;
+    // assigned_id?: string; // Commented out - removed assign to field
     interval_days?: string;
   }>({});
 
@@ -80,20 +80,20 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     'Custom (Admin-created)',
   ];
 
-  // Fetch users for assignment
-  useEffect(() => {
-    if (visible) {
-      fetchUsers();
-    }
-  }, [visible]);
+  // Fetch users for assignment - Commented out - removed assign to field
+  // useEffect(() => {
+  //   if (visible) {
+  //     fetchUsers();
+  //   }
+  // }, [visible]);
 
   // Set default values when modal opens
   useEffect(() => {
     if (visible) {
-      setReminderType(defaultReminderType || '');
+      // setReminderType(defaultReminderType || ''); // Commented out - now creating reminders for all types
       setReminderDate('');
       setReminderTime('');
-      setAssignedId('');
+      // setAssignedId(''); // Commented out - removed assign to field
       setIntervalDays('0');
       setSelectedDate(new Date());
       setShowDatePicker(false);
@@ -101,51 +101,47 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     }
   }, [visible, defaultReminderType]);
 
-  const fetchUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user?.id) {
-        return;
-      }
+  // const fetchUsers = async () => { // Commented out - removed assign to field
+  //   try {
+  //     setLoadingUsers(true);
+  //     const { data: { session } } = await supabase.auth.getSession();
+  //     
+  //     if (!session?.user?.id) {
+  //       return;
+  //     }
 
-      // Fetch users created by this admin
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, first_name, last_name, email, phone_no, userId')
-        .eq('userId', session.user.id)
-        .eq('role', 'user')
-        .order('first_name', { ascending: true });
+  //     // Fetch users created by this admin
+  //     const { data, error } = await supabase
+  //       .from('users')
+  //       .select('id, first_name, last_name, email, phone_no, userId')
+  //       .eq('userId', session.user.id)
+  //       .eq('role', 'user')
+  //       .order('first_name', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching users:', error);
-        return;
-      }
+  //     if (error) {
+  //       console.error('Error fetching users:', error);
+  //       return;
+  //     }
 
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
+  //     setUsers(data || []);
+  //   } catch (error) {
+  //     console.error('Error fetching users:', error);
+  //   } finally {
+  //     setLoadingUsers(false);
+  //   }
+  // };
 
   const handleSave = async () => {
     // Validate form
     const newErrors: typeof errors = {};
 
-    if (!reminderType.trim()) {
-      newErrors.reminder_type = 'Reminder type is required';
-    }
+    // Reminder type validation removed - now creating reminders for all types
 
     if (!reminderDate.trim()) {
       newErrors.reminder_date = 'Reminder date is required';
     }
 
-    if (!assignedId) {
-      newErrors.assigned_id = 'Please assign to a user';
-    }
+    // Assigned ID validation removed - removed assign to field
 
     if (!intervalDays.trim() || isNaN(Number(intervalDays)) || Number(intervalDays) < 0) {
       newErrors.interval_days = 'Interval days must be a valid number (0 or greater)';
@@ -164,26 +160,36 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       reminderDateTime = `${reminderDate}T00:00:00`;
     }
 
-    // Get the assigned user's UUID (userId field)
-    const selectedUser = users.find(u => u.id.toString() === assignedId);
-    if (!selectedUser?.userId) {
-      Alert.alert('Error', 'Selected user does not have a valid UUID');
-      return;
-    }
+    // Get assigned user's UUID - Commented out - removed assign to field
+    // const selectedUser = users.find(u => u.id.toString() === assignedId);
+    // if (!selectedUser?.userId) {
+    //   Alert.alert('Error', 'Selected user does not have a valid UUID');
+    //   return;
+    // }
 
     if (!assetId) {
       Alert.alert('Error', 'Asset ID is required');
       return;
     }
 
+    // Ensure userId is defined (TypeScript guard) - Commented out - removed assign to field
+    // const assignedUserId = selectedUser.userId;
+    // if (!assignedUserId) {
+    //   Alert.alert('Error', 'Selected user does not have a valid UUID');
+    //   return;
+    // }
+
     try {
-      await onSave({
-        reminder_type: reminderType,
+      // Create a single reminder with all reminder types as an array
+      const reminderData = {
+        reminder_type: reminderTypes, // Array of all reminder types
         reminder_date: reminderDateTime,
         asset_id: assetId,
-        assigned_id: selectedUser.userId,
+        assigned_id: null, // Removed assign to field - set to null
         interval_days: Number(intervalDays),
-      });
+      };
+
+      await onSave(reminderData);
     } catch (error) {
       console.error('Error saving reminder:', error);
     }
@@ -257,7 +263,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   </View>
                 )}
 
-                <View style={styles.formGroup}>
+                {/* Reminder Type selection commented out - now creating reminders for all types */}
+                {/* <View style={styles.formGroup}>
                   <Text style={styles.label}>Reminder Type *</Text>
                   <ScrollView
                     horizontal
@@ -295,7 +302,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   {errors.reminder_type && (
                     <Text style={styles.errorText}>{errors.reminder_type}</Text>
                   )}
-                </View>
+                </View> */}
 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Reminder Date *</Text>
@@ -353,7 +360,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   />
                 </View>
 
-                <View style={styles.formGroup}>
+                {/* Assign To field commented out - removed assign to field */}
+                {/* <View style={styles.formGroup}>
                   <Text style={styles.label}>Assign To *</Text>
                   {loadingUsers ? (
                     <Text style={styles.loadingText}>Loading users...</Text>
@@ -397,7 +405,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   {errors.assigned_id && (
                     <Text style={styles.errorText}>{errors.assigned_id}</Text>
                   )}
-                </View>
+                </View> */}
 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Interval Days *</Text>
