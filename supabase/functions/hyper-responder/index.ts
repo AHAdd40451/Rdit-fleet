@@ -80,12 +80,12 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Fetch the actual assets to get their user_id (admin who created them) and asset_name
+    // Fetch the actual assets to get their user_id (admin who created them), asset_name, and reminders JSON
     // Get unique asset IDs from all due reminders
     const assetIds = [...new Set(dueReminders.map((r: any) => r.asset_id))]
     const { data: assets, error: assetsError } = await supabaseClient
       .from('assets')
-      .select('id, asset_name, user_id')
+      .select('id, asset_name, user_id, reminders')
       .in('id', assetIds)
 
     if (assetsError) {
@@ -134,12 +134,90 @@ Deno.serve(async (req: Request) => {
 
       console.log(`Processing reminder ${reminder.id} for asset ${asset.id}, reminder_type: ${reminder.reminder_type}, assigned_id: ${reminder.assigned_id}`)
 
+      // Parse asset's reminders JSON to check lastUpdate dates
+      let assetReminders: any = {}
+      try {
+        if (asset.reminders) {
+          assetReminders = typeof asset.reminders === 'string' 
+            ? JSON.parse(asset.reminders) 
+            : asset.reminders
+        }
+      } catch (parseError) {
+        console.warn(`Error parsing reminders JSON for asset ${asset.id}:`, parseError)
+      }
+
+      // Check if reminder_type is an array (new schema) or string (old schema)
+      const reminderTypes = Array.isArray(reminder.reminder_type) 
+        ? reminder.reminder_type 
+        : [reminder.reminder_type]
+
+      // Check which reminder types need notifications based on lastUpdate vs reminder_date
+      const reminderDate = new Date(reminder.reminder_date)
+      const typesNeedingNotification: string[] = []
+
+      // Mapping from display names to JSON keys (snake_case)
+      const typeToKeyMap: { [key: string]: string } = {
+        'Oil Change': 'oil_change',
+        'Tire Rotation / Replacement': 'tire_rotation',
+        'General Inspection': 'general_inspection',
+        'Fluids': 'fluids',
+        'Belts': 'belts',
+        'Lights': 'lights',
+        'Battery': 'battery',
+        'Brake Inspection': 'brake_inspection',
+        'Compliance Inspection (DOT, State, CDL-related)': 'compliance_inspection',
+        'Custom (Admin-created)': 'custom',
+      }
+
+      for (const type of reminderTypes) {
+        // Get the JSON key for this reminder type
+        const jsonKey = typeToKeyMap[type] || type.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+        
+        const reminderData = assetReminders[jsonKey]
+        const lastUpdate = reminderData?.lastUpdate ? new Date(reminderData.lastUpdate) : null
+
+        // Create notification if:
+        // 1. lastUpdate doesn't exist (maintenance never done), OR
+        // 2. lastUpdate exists but is before reminder_date (maintenance done before it was due, now it's due again)
+        if (!lastUpdate || lastUpdate < reminderDate) {
+          typesNeedingNotification.push(type)
+        } else {
+          console.log(`Reminder type "${type}" (key: ${jsonKey}) was last updated on ${lastUpdate.toISOString()}, which is after the scheduled date ${reminderDate.toISOString()}, skipping notification`)
+        }
+      }
+
+      // Skip if no types need notification
+      if (typesNeedingNotification.length === 0) {
+        console.log(`All reminder types for reminder ${reminder.id} (asset ${asset.id}) have been updated after the scheduled date, skipping`)
+        diagnosticInfo.push({
+          assetId: asset.id,
+          reminderId: reminder.id,
+          reminderTypes: reminderTypes,
+          issue: 'All types already updated after scheduled date',
+          reminderDate: reminder.reminder_date
+        })
+        continue
+      }
+
       // Find the user assigned to this reminder (assigned_id is the UUID of the admin)
-      // Then find all regular users created by that admin
+      // If assigned_id is null, use the asset's user_id (admin who created the asset)
+      const assignedId = reminder.assigned_id || asset.user_id
+      
+      if (!assignedId) {
+        console.warn(`No assigned_id or user_id found for reminder ${reminder.id} (asset ${asset.id}), skipping`)
+        diagnosticInfo.push({
+          assetId: asset.id,
+          reminderId: reminder.id,
+          issue: 'No assigned_id or user_id found',
+        })
+        continue
+      }
+
+      // Find all regular users created by that admin
       const { data: users, error: usersError } = await supabaseClient
         .from('users')
         .select('id')
-        .eq('userId', reminder.assigned_id)
+        .eq('userId', assignedId)
 
       if (usersError) {
         console.error(`Error fetching users for reminder ${reminder.id} (asset ${asset.id}):`, usersError)
@@ -154,22 +232,21 @@ Deno.serve(async (req: Request) => {
       }
 
       if (!users || users.length === 0) {
-        console.warn(`No users found for reminder ${reminder.id} with assigned_id ${reminder.assigned_id}`)
+        console.warn(`No users found for reminder ${reminder.id} with assigned_id ${assignedId}`)
         diagnosticInfo.push({
           assetId: asset.id,
           reminderId: reminder.id,
           issue: 'No users found',
-          assignedId: reminder.assigned_id,
-          message: `No users found with userId matching ${reminder.assigned_id}`
+          assignedId: assignedId,
+          message: `No users found with userId matching ${assignedId}`
         })
         continue
       }
 
       console.log(`Found ${users.length} users for reminder ${reminder.id}`)
+      console.log(`Types needing notification: ${typesNeedingNotification.join(', ')}`)
 
       const userIds = users.map((u: any) => u.id)
-      const reminderType = reminder.reminder_type || 'maintenance'
-      const expectedMessagePattern = `requires ${reminderType}`
       const intervalDays = reminder.interval_days || 0
 
       // Get all notifications for this reminder (not just last 24 hours) to check interval logic
@@ -186,9 +263,11 @@ Deno.serve(async (req: Request) => {
         // Continue anyway - we'll try to create notifications
       }
 
-      // Filter notifications that match this reminder type
+      // Filter notifications that match any of the reminder types needing notification
       const matchingNotifications = (allNotifications || []).filter(
-        (n: any) => n.message && n.message.includes(expectedMessagePattern)
+        (n: any) => n.message && typesNeedingNotification.some(
+          type => n.message.includes(type)
+        )
       )
 
       // Determine which users should receive notifications based on interval logic
@@ -233,11 +312,11 @@ Deno.serve(async (req: Request) => {
       }
 
       if (usersToNotify.length === 0) {
-        console.log(`No users need notifications for reminder ${reminder.id} (asset ${asset.id}, reminder_type: ${reminderType}, interval: ${intervalDays}), skipping`)
+        console.log(`No users need notifications for reminder ${reminder.id} (asset ${asset.id}, reminder_types: ${typesNeedingNotification.join(', ')}, interval: ${intervalDays}), skipping`)
         diagnosticInfo.push({
           assetId: asset.id,
           reminderId: reminder.id,
-          reminderType: reminderType,
+          reminderTypes: typesNeedingNotification,
           intervalDays: intervalDays,
           issue: 'No users need notifications at this time',
           totalUsers: users.length,
@@ -246,18 +325,24 @@ Deno.serve(async (req: Request) => {
         continue
       }
 
-      console.log(`Creating notifications for ${usersToNotify.length} users for reminder ${reminder.id} (asset ${asset.id}, reminder_type: ${reminderType}, interval: ${intervalDays})`)
+      console.log(`Creating notifications for ${usersToNotify.length} users for reminder ${reminder.id} (asset ${asset.id}, reminder_types: ${typesNeedingNotification.join(', ')}, interval: ${intervalDays})`)
 
-      // Create notifications for these users - one notification per reminder type per asset
+      // Create notifications for these users - one notification per reminder type that needs attention
       // Match the exact schema: user_id (integer), message (text), type (text), asset_id (uuid), read (boolean)
       // Note: id and created_at are auto-generated, so we don't include them
-      const notificationData = usersToNotify.map((user: any) => ({
-        user_id: user.id, // INTEGER - user's id from users table
-        message: `Maintenance reminder: ${asset.asset_name || 'Asset'} requires ${reminderType}`, // TEXT - required, includes reminder_type
-        type: 'maintenance_reminder', // TEXT - required
-        asset_id: asset.id, // UUID - nullable
-        read: false, // BOOLEAN - defaults to false
-      }))
+      const notificationData: any[] = []
+      
+      for (const type of typesNeedingNotification) {
+        for (const user of usersToNotify) {
+          notificationData.push({
+            user_id: user.id, // INTEGER - user's id from users table
+            message: `Maintenance reminder: ${asset.asset_name || 'Asset'} requires ${type}`, // TEXT - required, includes reminder_type
+            type: 'maintenance_reminder', // TEXT - required
+            asset_id: asset.id, // UUID - nullable
+            read: false, // BOOLEAN - defaults to false
+          })
+        }
+      }
 
       const { data: insertedNotifications, error: insertError } = await supabaseClient
         .from('notifications')
@@ -271,7 +356,7 @@ Deno.serve(async (req: Request) => {
         diagnosticInfo.push({
           assetId: asset.id,
           reminderId: reminder.id,
-          reminderType: reminderType,
+          reminderTypes: typesNeedingNotification,
           issue: 'Insert error',
           error: insertError.message,
           notificationDataCount: notificationData.length
@@ -280,7 +365,7 @@ Deno.serve(async (req: Request) => {
         const count = insertedNotifications?.length || notificationData.length
         notificationsCreated += count
         processedReminders.push(reminder)
-        console.log(`Successfully created ${count} notifications for reminder ${reminder.id} (asset ${asset.id}, ${asset.asset_name}, reminder_type: ${reminderType})`)
+        console.log(`Successfully created ${count} notifications for reminder ${reminder.id} (asset ${asset.id}, ${asset.asset_name}, reminder_types: ${typesNeedingNotification.join(', ')})`)
       }
     }
 
