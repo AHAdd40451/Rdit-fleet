@@ -17,6 +17,7 @@ import { BottomNavBar } from '../src/components/BottomNavBar';
 import { TopBar } from '../src/components/TopBar';
 import { Sidebar } from '../src/components/Sidebar';
 import { Ionicons } from '@expo/vector-icons';
+import { NotificationsSkeleton } from '../src/components/SkeletonScreens';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -144,13 +145,7 @@ export default function NotificationsScreen() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
+    return <NotificationsSkeleton />;
   }
 
   return (

@@ -17,6 +17,7 @@ import { BottomNavBar } from '../src/components/BottomNavBar';
 import { Sidebar } from '../src/components/Sidebar';
 import { TopBar } from '../src/components/TopBar';
 import { LoadingBar } from '../src/components/LoadingBar';
+import { DashboardSkeleton } from '../src/components/SkeletonScreens';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -115,19 +116,7 @@ export default function UserDashboardScreen() {
   };
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <TopBar
-          title="User Dashboard"
-          showHamburger={true}
-          onHamburgerPress={() => setSidebarVisible(true)}
-        />
-        <View style={styles.loadingContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-        <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
-      </SafeAreaView>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

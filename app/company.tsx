@@ -17,6 +17,7 @@ import { useToast } from '../src/components/Toast';
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { TopBar } from '../src/components/TopBar';
+import { CompanySetupSkeleton } from '../src/components/SkeletonScreens';
 
 export default function CompanySetupScreen() {
   const router = useRouter();
@@ -86,13 +87,7 @@ export default function CompanySetupScreen() {
 
   // Show loading while checking company
   if (checkingCompany || authLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
+    return <CompanySetupSkeleton />;
   }
 
   const handleCreateCompany = async () => {

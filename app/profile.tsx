@@ -26,6 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import { TopBar } from '../src/components/TopBar';
 import profileStyles from './profileStyles';
+import { ProfileSkeleton } from '../src/components/SkeletonScreens';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -625,13 +626,7 @@ export default function ProfileScreen() {
   );
 
   if (!userProfile) {
-    return (
-      <SafeAreaView style={profileStyles.container} edges={['top', 'bottom']}>
-        <View style={profileStyles.loadingContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
+    return <ProfileSkeleton />;
   }
 
   return (

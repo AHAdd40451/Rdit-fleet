@@ -20,6 +20,7 @@ import { UsersTable } from '../src/components/UsersTable';
 import { UserModal } from '../src/components/UserModal';
 import { Sidebar } from '../src/components/Sidebar';
 import { TopBar } from '../src/components/TopBar';
+import { AdminDashboardSkeleton } from '../src/components/SkeletonScreens';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -165,13 +166,7 @@ export default function AdminDashboardScreen() {
 
   // Show loading while checking company
   if (checkingCompany) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingFullContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
+    return <AdminDashboardSkeleton />;
   }
 
   return (

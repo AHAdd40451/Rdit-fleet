@@ -22,6 +22,7 @@ import { BottomNavBar } from '../src/components/BottomNavBar';
 import { TopBar } from '../src/components/TopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sidebar } from '../src/components/Sidebar';
+import { SettingsSkeleton } from '../src/components/SkeletonScreens';
 
 const TEAL_GREEN = '#14AB98';
 
@@ -809,13 +810,7 @@ export default function SettingsScreen() {
   };
 
   if (!userProfile || userProfile.role !== 'admin') {
-    return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.loadingContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
+    return <SettingsSkeleton />;
   }
 
   return (

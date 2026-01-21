@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import { LoadingBar } from '../../src/components/LoadingBar';
 import { TopBar } from '../../src/components/TopBar';
 import { Ionicons } from '@expo/vector-icons';
+import { NotificationDetailSkeleton } from '../../src/components/SkeletonScreens';
 
 const TEAL_GREEN = '#14AB98';
 const BRIGHT_GREEN = '#B0E56D';
@@ -152,18 +153,7 @@ export default function NotificationDetailScreen() {
   };
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <TopBar
-          title="Notification Details"
-          showBack={true}
-          showHamburger={false}
-        />
-        <View style={styles.loadingContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
+    return <NotificationDetailSkeleton />;
   }
 
   if (error || !notification) {

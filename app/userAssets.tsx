@@ -22,6 +22,7 @@ import { AssetModal } from '../src/components/AssetModal';
 import { ChecklistModal } from '../src/components/ChecklistModal';
 import { TopBar } from '../src/components/TopBar';
 import { Sidebar } from '../src/components/Sidebar';
+import { UserAssetsSkeleton } from '../src/components/SkeletonScreens';
 import { generateUUIDFromString } from '../src/utils/generateUUID';
 import { callRapidFunction } from '../src/utils/callRapidFunction';
 

@@ -20,6 +20,7 @@ import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
 import { ReminderModal } from '../src/components/ReminderModal';
 import { Sidebar } from '../src/components/Sidebar';
 import { TopBar } from '../src/components/TopBar';
+import { AssetsSkeleton } from '../src/components/SkeletonScreens';
 import { generateUUIDFromString } from '../src/utils/generateUUID';
 import { callRapidFunction } from '../src/utils/callRapidFunction';
 import { assetStyles } from './styles/asset.styles';
@@ -592,24 +593,8 @@ export default function AssetsScreen() {
     );
   };
 
-  if (checkingCompany) {
-    return (
-      <SafeAreaView style={assetStyles.container}>
-        <View style={assetStyles.loadingFullContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (userProfile?.role !== 'admin') {
-    return (
-      <SafeAreaView style={assetStyles.container}>
-        <View style={assetStyles.loadingFullContainer}>
-          <LoadingBar variant="bar" />
-        </View>
-      </SafeAreaView>
-    );
+  if (checkingCompany || userProfile?.role !== 'admin') {
+    return <AssetsSkeleton />;
   }
 
   return (
