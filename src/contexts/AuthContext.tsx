@@ -52,7 +52,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await query.single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        // PGRST116 is "not found" error - this is expected for new users
+        // Don't log it as an error to avoid noise in console
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching user profile:', error);
+        }
         return null;
       }
 

@@ -28,13 +28,36 @@ export default function SignupScreen() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (session && userProfile) {
-      if (userProfile.role === 'admin') {
-        router.replace('/adminDashboard');
-      } else if (userProfile.role === 'user') {
-        router.replace('/userDashboard');
+    const checkAndRedirect = async () => {
+      if (session && userProfile) {
+        if (userProfile.role === 'admin') {
+          // Check if company exists for admin before redirecting
+          try {
+            const { data: companyData, error: companyError } = await supabase
+              .from('company')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .single();
+
+            // If company doesn't exist, redirect to company setup page
+            if (companyError || !companyData) {
+              router.replace('/company');
+            } else {
+              // Company exists, redirect to admin dashboard
+              router.replace('/adminDashboard');
+            }
+          } catch (error) {
+            console.error('Error checking company:', error);
+            // On error, redirect to company page to be safe
+            router.replace('/company');
+          }
+        } else if (userProfile.role === 'user') {
+          router.replace('/userDashboard');
+        }
       }
-    }
+    };
+
+    checkAndRedirect();
   }, [session, userProfile]);
 
   const handleSignup = async () => {
@@ -92,20 +115,34 @@ export default function SignupScreen() {
         );
       }
 
+      // Wait a moment for the profile to be committed to the database
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Refresh user profile to get the updated role
       await refreshUserProfile();
 
+      // Wait a bit more to ensure profile is loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       showToast('Account created successfully!', 'success', 2000);
+      
       setTimeout(async () => {
         // Get the created user profile to check role
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('users')
           .select('role')
           .eq('email', email.trim())
           .single();
 
+        if (profileError) {
+          console.error('Error fetching profile after signup:', profileError);
+          // If profile fetch fails, still redirect to company page for admin
+          router.replace('/company');
+          return;
+        }
+
         if (profileData?.role === 'admin') {
-          // Admin should go to company setup page
+          // Admin should go to company setup page (company doesn't exist yet for new admin)
           router.replace('/company');
         } else {
           // Regular users go to login

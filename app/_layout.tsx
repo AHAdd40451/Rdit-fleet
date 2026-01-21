@@ -9,6 +9,7 @@ import * as Linking from 'expo-linking';
 import { LogBox } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import '../src/lib/notifications'; // Import notification handler
+import { supabase } from '../lib/supabase';
 
 function RootLayoutNav() {
   const { session, userProfile, loading } = useAuth();
@@ -120,12 +121,42 @@ function RootLayoutNav() {
       // User is signed in (via email or phone)
       if (isAuthRoute) {
         // User is signed in and trying to access auth routes (login/signup)
-        // Redirect to appropriate dashboard based on role
-        // Note: Login/signup flows handle company checks for admins
-        if (userProfile?.role === 'admin') {
-          router.replace('/adminDashboard');
-        } else if (userProfile?.role === 'user') {
-          router.replace('/userDashboard');
+        // Only redirect if userProfile is loaded (has a role) and we have a session
+        // Give a small delay to allow login handler to complete its redirect first
+        if (userProfile?.role && session?.user?.id) {
+          // Small delay to avoid conflict with login handler redirect
+          const redirectTimer = setTimeout(() => {
+            if (userProfile.role === 'admin') {
+              // Check if company exists for admin before redirecting
+              const checkCompanyAndRedirect = async () => {
+                try {
+                  const { data: companyData, error: companyError } = await supabase
+                    .from('company')
+                    .select('id')
+                    .eq('user_id', session.user.id)
+                    .single();
+
+                  // If company doesn't exist, redirect to company setup page
+                  if (companyError || !companyData) {
+                    router.replace('/company');
+                  } else {
+                    // Company exists, redirect to admin dashboard
+                    router.replace('/adminDashboard');
+                  }
+                } catch (error) {
+                  console.error('Error checking company:', error);
+                  // On error, redirect to company page to be safe
+                  router.replace('/company');
+                }
+              };
+              
+              checkCompanyAndRedirect();
+            } else if (userProfile.role === 'user') {
+              router.replace('/userDashboard');
+            }
+          }, 500);
+          
+          return () => clearTimeout(redirectTimer);
         }
         // If role is not yet loaded, the effect will run again when it loads
       } else if (isDashboardRoute && userProfile) {

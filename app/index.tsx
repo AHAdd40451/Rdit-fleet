@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Text,
   View,
@@ -30,17 +30,44 @@ export default function LoginScreen() {
   const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
   const [loginType, setLoginType] = useState<LoginType>('admin');
   const [loading, setLoading] = useState(false);
+  const redirectingRef = useRef(false);
 
-  // Redirect if already logged in
+  // Redirect if already logged in (but not if we're currently logging in)
   useEffect(() => {
-    if (session && userProfile) {
-      if (userProfile.role === 'admin') {
-        router.replace('/adminDashboard');
-      } else if (userProfile.role === 'user') {
-        router.replace('/userDashboard');
+    const checkAndRedirect = async () => {
+      // Don't redirect if we're in the middle of a login process
+      if (loading || redirectingRef.current) return;
+      
+      if (session && userProfile && userProfile.role) {
+        if (userProfile.role === 'admin') {
+          // Check if company exists for admin before redirecting
+          try {
+            const { data: companyData, error: companyError } = await supabase
+              .from('company')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .single();
+
+            // If company doesn't exist, redirect to company setup page
+            if (companyError || !companyData) {
+              router.replace('/company');
+            } else {
+              // Company exists, redirect to admin dashboard
+              router.replace('/adminDashboard');
+            }
+          } catch (error) {
+            console.error('Error checking company:', error);
+            // On error, redirect to company page to be safe
+            router.replace('/company');
+          }
+        } else if (userProfile.role === 'user') {
+          router.replace('/userDashboard');
+        }
       }
-    }
-  }, [session, userProfile]);
+    };
+
+    checkAndRedirect();
+  }, [session, userProfile, loading]);
 
   const handleLogin = async () => {
     if (loginType === 'admin') {
@@ -76,21 +103,45 @@ export default function LoginScreen() {
         // Fetch user profile to get role
         await refreshUserProfile();
         
-        // Wait a moment for the profile to be fetched
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait a moment for the profile to be fetched and context to update
+        await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Get the updated profile from auth context
-        const { data: profileData } = await supabase
+        // Get the updated profile directly from database to ensure we have the latest data
+        const { data: profileData, error: profileError } = await supabase
           .from('users')
           .select('role')
           .eq('email', email.trim())
           .single();
 
-        showToast('Login successful!', 'success', 2000);
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          showToast('Login successful, but could not load profile. Please try again.', 'error');
+          setLoading(false);
+          return;
+        }
+
+        if (!profileData) {
+          console.error('No profile data found');
+          showToast('Login successful, but profile not found. Please contact support.', 'error');
+          setLoading(false);
+          return;
+        }
+
+        showToast('Login successful!', 'success', 1000);
         
         // Navigate to appropriate dashboard based on role
-        setTimeout(async () => {
-          if (profileData?.role === 'admin') {
+        // Prevent multiple redirects
+        if (redirectingRef.current) {
+          setLoading(false);
+          return;
+        }
+        redirectingRef.current = true;
+        
+        // Redirect immediately after getting profile data
+        try {
+          let redirectPath = '/company'; // Default fallback
+          
+          if (profileData.role === 'admin') {
             // Check if company exists for admin
             const { data: companyData, error: companyError } = await supabase
               .from('company')
@@ -100,18 +151,29 @@ export default function LoginScreen() {
 
             // If company doesn't exist, redirect to company setup page
             if (companyError || !companyData) {
-              router.replace('/company');
+              redirectPath = '/company';
             } else {
               // Company exists, redirect to admin dashboard
-              router.replace('/adminDashboard');
+              redirectPath = '/adminDashboard';
             }
-          } else if (profileData?.role === 'user') {
-            router.replace('/userDashboard');
-          } else {
-            // Default to admin dashboard if role is not found
-            router.replace('/adminDashboard');
+          } else if (profileData.role === 'user') {
+            redirectPath = '/userDashboard';
           }
-        }, 2000);
+          
+          console.log('Redirecting to:', redirectPath);
+          // Use replace to navigate
+          router.replace(redirectPath);
+        } catch (error) {
+          console.error('Error during redirect:', error);
+          // Fallback redirect to company page
+          router.replace('/company');
+        } finally {
+          // Don't reset redirectingRef immediately - let the navigation complete
+          setTimeout(() => {
+            redirectingRef.current = false;
+          }, 1000);
+          setLoading(false);
+        }
       } catch (error: any) {
         console.error('Login error:', error);
         
@@ -129,6 +191,7 @@ export default function LoginScreen() {
         }
         
         showToast(errorMessage, 'error');
+        redirectingRef.current = false;
       } finally {
         setLoading(false);
       }
