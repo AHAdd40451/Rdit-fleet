@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Input } from './Input';
 import { supabase } from '../../lib/supabase';
 
 interface ReminderData {
@@ -75,6 +76,15 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [availableReminderTypes, setAvailableReminderTypes] = useState<string[]>([]);
   const [loadingReminders, setLoadingReminders] = useState(false);
+  const [selectedPillType, setSelectedPillType] = useState<string | null>(null);
+  const [dateInputs, setDateInputs] = useState<{ [key: string]: string }>({});
+
+  const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Fetch reminders for the asset and extract reminder types
   useEffect(() => {
@@ -87,6 +97,7 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
 
       try {
         setLoadingReminders(true);
+        setSelectedPillType(null);
         
         // Fetch reminders for this asset
         const { data: remindersData, error } = await supabase
@@ -129,12 +140,24 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
               ? JSON.parse(asset.reminders) 
               : asset.reminders;
             setReminders(parsed || {});
+            
+            // Initialize date inputs from existing reminders
+            const inputs: { [key: string]: string } = {};
+            Object.keys(parsed || {}).forEach((key) => {
+              if (parsed[key]?.lastUpdate) {
+                const date = new Date(parsed[key].lastUpdate);
+                inputs[key] = formatDateForInput(date);
+              }
+            });
+            setDateInputs(inputs);
           } catch (error) {
             console.error('Error parsing reminders:', error);
             setReminders({});
+            setDateInputs({});
           }
         } else {
           setReminders({});
+          setDateInputs({});
         }
       } catch (error) {
         console.error('Error in fetchReminderTypes:', error);
@@ -161,6 +184,50 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
     }
   };
 
+  const handlePillClick = (type: string) => {
+    if (loading) return;
+    setSelectedPillType(selectedPillType === type ? null : type);
+    
+    // Initialize date input if not already set
+    if (!dateInputs[type] && reminders[type]?.lastUpdate) {
+      const date = new Date(reminders[type].lastUpdate);
+      setDateInputs({
+        ...dateInputs,
+        [type]: formatDateForInput(date),
+      });
+    } else if (!dateInputs[type]) {
+      setDateInputs({
+        ...dateInputs,
+        [type]: '',
+      });
+    }
+  };
+
+  const handleDateInputChange = (type: string, value: string) => {
+    setDateInputs({
+      ...dateInputs,
+      [type]: value,
+    });
+    
+    // Update reminders when date is entered
+    if (value) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          const updatedReminders = {
+            ...reminders,
+            [type]: {
+              lastUpdate: date.toISOString(),
+            },
+          };
+          setReminders(updatedReminders);
+        }
+      } catch (error) {
+        console.error('Error parsing date input:', error);
+      }
+    }
+  };
+
   const handleDateChange = (event: any, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
@@ -178,6 +245,13 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
         },
       };
       setReminders(updatedReminders);
+      
+      // Update date input as well
+      setDateInputs({
+        ...dateInputs,
+        [editingType]: formatDateForInput(date),
+      });
+      
       setEditingType(null);
     }
   };
@@ -268,27 +342,63 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
                   </View>
                 ) : (
                   <View style={styles.checklistContainer}>
-                    {reminderTypes.map((type) => (
-                      <View key={type} style={styles.checklistItem}>
-                        <View style={styles.checklistItemHeader}>
-                          <Text style={styles.checklistItemLabel}>
-                            {reminderTypeLabels[type] || type}
-                          </Text>
-                        </View>
+                    {/* Display reminder types as pills */}
+                    <View style={styles.pillsContainer}>
+                      <Text style={styles.pillsLabel}>Reminder Types:</Text>
+                      <View style={styles.pillsRow}>
+                        {reminderTypes.map((type) => (
+                          <TouchableOpacity
+                            key={type}
+                            style={[
+                              styles.typePill,
+                              selectedPillType === type && styles.typePillSelected,
+                            ]}
+                            onPress={() => handlePillClick(type)}
+                            disabled={loading}
+                          >
+                            <Text
+                              style={[
+                                styles.typePillText,
+                                selectedPillType === type && styles.typePillTextSelected,
+                              ]}
+                            >
+                              {reminderTypeLabels[type] || type}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    {/* Display input field for selected pill */}
+                    {selectedPillType && (
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>
+                          Last Update Date for {reminderTypeLabels[selectedPillType] || selectedPillType}
+                        </Text>
+                        <Input
+                          placeholder="YYYY-MM-DD"
+                          value={dateInputs[selectedPillType] || ''}
+                          onChangeText={(text) => handleDateInputChange(selectedPillType, text)}
+                          keyboardType="default"
+                          editable={!loading}
+                        />
                         <TouchableOpacity
-                          style={styles.dateButton}
-                          onPress={() => openDatePicker(type)}
+                          style={styles.datePickerButton}
+                          onPress={() => openDatePicker(selectedPillType)}
                           disabled={loading}
                         >
-                          <Text style={styles.dateButtonText}>
-                            {reminders[type]?.lastUpdate
-                              ? formatDate(reminders[type].lastUpdate)
-                              : 'Not set'}
+                          <Text style={styles.datePickerButtonText}>
+                            Or select from calendar
                           </Text>
                           <Ionicons name="calendar-outline" size={20} color="#14AB98" />
                         </TouchableOpacity>
+                        {reminders[selectedPillType]?.lastUpdate && (
+                          <Text style={styles.currentDateText}>
+                            Current: {formatDate(reminders[selectedPillType].lastUpdate)}
+                          </Text>
+                        )}
                       </View>
-                    ))}
+                    )}
                   </View>
                 )}
               </ScrollView>
@@ -511,5 +621,86 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  pillsContainer: {
+    marginBottom: 20,
+  },
+  pillsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  pillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  typePill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  typePillSelected: {
+    backgroundColor: '#14AB98',
+    borderColor: '#14AB98',
+  },
+  typePillText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  typePillTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  inputContainer: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#14AB98',
+  },
+  datePickerButtonText: {
+    fontSize: 14,
+    color: '#14AB98',
+    marginRight: 8,
+    fontWeight: '600',
+  },
+  currentDateText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  allRemindersContainer: {
+    marginTop: 20,
+  },
+  allRemindersLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
   },
 });
