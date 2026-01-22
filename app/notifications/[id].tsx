@@ -192,7 +192,12 @@ export default function NotificationDetailScreen() {
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        nestedScrollEnabled={true}
+        bounces={false}
       >
         {/* Notification Card */}
         <View style={styles.notificationCard}>

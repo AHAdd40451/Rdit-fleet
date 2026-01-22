@@ -30,7 +30,13 @@ interface ReminderModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (reminderData: {
-    reminder_type: string[];
+    reminder_type: Array<{
+      name: string;
+      active: boolean;
+      schedule_date: string;
+      time: string;
+      interval: number;
+    }>;
     reminder_date: string;
     asset_id: string;
     assigned_id: string | null;
@@ -67,6 +73,20 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     interval_days?: string;
   }>({});
 
+  const maintenanceTypeMap: { [key: string]: string } = {
+    'oil_change': 'Oil Change',
+    'tire_rotation': 'Tire Rotation',
+    'tire_replacement': 'Tire Replacement',
+    'general_inspection': 'General Inspection',
+    'brake_inspection': 'Brake Inspection',
+    'battery': 'Battery',
+    'fluids': 'Fluids',
+    'belts': 'Belts',
+    'lights': 'Lights',
+    'compliance_inspection': 'Compliance Inspection',
+    'custom_maintenance': 'Custom Maintenance',
+  };
+
   const reminderTypes = [
     'Oil Change',
     'Tire Rotation / Replacement',
@@ -79,6 +99,11 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     'Compliance Inspection (DOT, State, CDL-related)',
     'Custom (Admin-created)',
   ];
+
+  // Get the display name for the selected maintenance type
+  const selectedMaintenanceTypeDisplay = defaultReminderType 
+    ? maintenanceTypeMap[defaultReminderType] || defaultReminderType 
+    : '';
 
   // Fetch users for assignment - Commented out - removed assign to field
   // useEffect(() => {
@@ -180,10 +205,47 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     // }
 
     try {
-      // Create a single reminder with all reminder types as an array
+      // Format reminder_date as ISO string with timezone
+      const scheduleDate = new Date(reminderDateTime).toISOString();
+      
+      // Format time as HH:MM:SS or use default
+      const formattedTime = reminderTime ? (reminderTime.includes(':') ? reminderTime : `${reminderTime}:00`) : '00:00:00';
+      
+      // Create reminder in new format
+      type ReminderTypeObject = {
+        name: string;
+        active: boolean;
+        schedule_date: string;
+        time: string;
+        interval: number;
+      };
+      
+      let reminderTypeArray: ReminderTypeObject[];
+      
+      if (defaultReminderType) {
+        // Single selected type - create object with new format
+        const selectedTypeName = maintenanceTypeMap[defaultReminderType] || defaultReminderType;
+        reminderTypeArray = [{
+          name: selectedTypeName,
+          active: true,
+          schedule_date: scheduleDate,
+          time: formattedTime,
+          interval: Number(intervalDays),
+        }];
+      } else {
+        // Fallback to all types if no type selected - create objects for all types
+        reminderTypeArray = reminderTypes.map(type => ({
+          name: type,
+          active: true,
+          schedule_date: scheduleDate,
+          time: formattedTime,
+          interval: Number(intervalDays),
+        }));
+      }
+      
       const reminderData = {
-        reminder_type: reminderTypes, // Array of all reminder types
-        reminder_date: reminderDateTime,
+        reminder_type: reminderTypeArray,
+        reminder_date: scheduleDate,
         asset_id: assetId,
         assigned_id: null, // Removed assign to field - set to null
         interval_days: Number(intervalDays),
@@ -255,7 +317,17 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <ScrollView 
+                style={styles.modalBody} 
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={true}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                nestedScrollEnabled={true}
+                scrollEnabled={true}
+                bounces={false}
+                alwaysBounceVertical={false}
+              >
                 {assetName && (
                   <View style={styles.assetInfo}>
                     <Text style={styles.assetInfoLabel}>Asset:</Text>
@@ -263,52 +335,30 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   </View>
                 )}
 
-                {/* Reminder Type selection commented out - now creating reminders for all types */}
-                {/* <View style={styles.formGroup}>
+                {/* Display selected reminder type */}
+                <View style={styles.formGroup}>
                   <Text style={styles.label}>Reminder Type *</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.typeScrollView}
-                  >
-                    <View style={styles.typeContainer}>
-                      {reminderTypes.map((type) => (
-                        <TouchableOpacity
-                          key={type}
-                          style={[
-                            styles.typeChip,
-                            reminderType === type && styles.typeChipSelected,
-                          ]}
-                          onPress={() => {
-                            if (!loading) {
-                              setReminderType(type);
-                              setErrors({ ...errors, reminder_type: undefined });
-                            }
-                          }}
-                          disabled={loading}
-                        >
-                          <Text
-                            style={[
-                              styles.typeChipText,
-                              reminderType === type && styles.typeChipTextSelected,
-                            ]}
-                          >
-                            {type}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                  {selectedMaintenanceTypeDisplay ? (
+                    <View style={styles.selectedTypeContainer}>
+                      <View style={[styles.typeChip, styles.typeChipSelected]}>
+                        <Text style={[styles.typeChipText, styles.typeChipTextSelected]}>
+                          {selectedMaintenanceTypeDisplay}
+                        </Text>
+                      </View>
                     </View>
-                  </ScrollView>
-                  {errors.reminder_type && (
-                    <Text style={styles.errorText}>{errors.reminder_type}</Text>
+                  ) : (
+                    <Text style={styles.helperText}>
+                      No maintenance type selected
+                    </Text>
                   )}
-                </View> */}
+                </View>
 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Reminder Date *</Text>
                   <TouchableOpacity
                     onPress={openDatePicker}
                     disabled={loading}
+                    delayPressIn={50}
                     style={[
                       styles.datePickerButton,
                       errors.reminder_date && styles.inputError,
@@ -468,6 +518,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -486,8 +537,13 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   modalBody: {
+    flex: 1,
     padding: 20,
-    maxHeight: 500,
+    minHeight: 0,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+    flexGrow: 1,
   },
   assetInfo: {
     marginBottom: 20,
@@ -520,6 +576,9 @@ const styles = StyleSheet.create({
   typeContainer: {
     flexDirection: 'row',
     gap: 8,
+  },
+  selectedTypeContainer: {
+    marginTop: 8,
   },
   typeChip: {
     paddingVertical: 8,

@@ -160,7 +160,12 @@ export default function CompanySetupScreen() {
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
+          scrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          nestedScrollEnabled={true}
+          bounces={false}
         >
           {/* Header */}
           <TopBar

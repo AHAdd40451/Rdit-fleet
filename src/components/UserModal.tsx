@@ -246,7 +246,12 @@ export const UserModal: React.FC<UserModalProps> = ({
             >
               <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
+                scrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                nestedScrollEnabled={true}
+                bounces={false}
               >
                 <View style={styles.modalContent}>
                   <View style={styles.header}>

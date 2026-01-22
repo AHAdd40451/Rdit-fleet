@@ -338,7 +338,12 @@ export const AssetBottomSheet: React.FC<AssetBottomSheetProps> = ({
             <ScrollView
               style={styles.content}
               contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
+              scrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              nestedScrollEnabled={true}
+              bounces={false}
             >
               {/* Image Gallery Section */}
               <View style={styles.imageSection}>

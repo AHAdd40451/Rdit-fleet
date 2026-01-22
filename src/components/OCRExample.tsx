@@ -277,7 +277,16 @@ export const OCRExample: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>OCR Text Recognition</Text>
         <Text style={styles.subtitle}>

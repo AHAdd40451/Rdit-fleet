@@ -401,4 +401,67 @@ export const assetStyles = StyleSheet.create({
       fontSize: 10,
       color: '#999',
     },
+    pickerModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    pickerModalContent: {
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      width: '100%',
+      maxWidth: 400,
+      maxHeight: '70%',
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E0E0E0',
+    },
+    pickerTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: '#333',
+    },
+    pickerCloseButton: {
+      padding: 4,
+    },
+    pickerCloseButtonText: {
+      fontSize: 24,
+      color: '#666',
+      fontWeight: '300',
+    },
+    pickerScrollView: {
+      maxHeight: 400,
+    },
+    pickerOption: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F0F0F0',
+    },
+    pickerOptionSelected: {
+      backgroundColor: '#F0F9F8',
+    },
+    pickerOptionText: {
+      fontSize: 16,
+      color: '#333',
+    },
+    pickerOptionTextSelected: {
+      color: TEAL_GREEN,
+      fontWeight: '600',
+    },
+    pickerCheckmark: {
+      fontSize: 18,
+      color: TEAL_GREEN,
+      fontWeight: 'bold',
+    },
   });

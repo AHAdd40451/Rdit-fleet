@@ -793,8 +793,12 @@ export const AssetModal: React.FC<AssetModalProps> = ({
           <View style={styles.modalContainer}>
             <ScrollView
               contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
+              scrollEnabled={true}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              nestedScrollEnabled={true}
+              bounces={false}
               nestedScrollEnabled={true}
               scrollEnabled={true}
               bounces={false}

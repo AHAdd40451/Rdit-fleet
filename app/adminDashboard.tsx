@@ -184,7 +184,12 @@ export default function AdminDashboardScreen() {
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
+          scrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          nestedScrollEnabled={true}
+          bounces={false}
         >
           {/* Welcome Section */}
           <View style={styles.welcomeSection}>

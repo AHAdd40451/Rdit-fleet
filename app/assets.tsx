@@ -17,10 +17,9 @@ import { supabase } from '../lib/supabase';
 import { BottomNavBar } from '../src/components/BottomNavBar';
 import { AssetModal } from '../src/components/AssetModal';
 import { AssetBottomSheet } from '../src/components/AssetBottomSheet';
-import { ReminderModal } from '../src/components/ReminderModal';
+import { ReminderBottomSheet } from '../src/components/ReminderBottomSheet';
 import { Sidebar } from '../src/components/Sidebar';
 import { TopBar } from '../src/components/TopBar';
-import { AssetsSkeleton } from '../src/components/SkeletonScreens';
 import { generateUUIDFromString } from '../src/utils/generateUUID';
 import { callRapidFunction } from '../src/utils/callRapidFunction';
 import { assetStyles } from './styles/asset.styles';
@@ -85,7 +84,7 @@ export default function AssetsScreen() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'overdue' | 'due_soon' | 'completed' | 'all_assets'>('all_assets');
-  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [showReminderBottomSheet, setShowReminderBottomSheet] = useState(false);
   const [selectedAssetForReminder, setSelectedAssetForReminder] = useState<Asset | null>(null);
   const [savingReminder, setSavingReminder] = useState(false);
 
@@ -521,11 +520,17 @@ export default function AssetsScreen() {
 
   const handleScheduleReminder = (asset: Asset) => {
     setSelectedAssetForReminder(asset);
-    setShowReminderModal(true);
+    setShowReminderBottomSheet(true);
   };
 
   const handleSaveReminder = async (reminderData: {
-    reminder_type: string[];
+    reminder_type: Array<{
+      name: string;
+      active: boolean;
+      schedule_date: string;
+      time: string;
+      interval: number;
+    }>;
     reminder_date: string;
     asset_id: string;
     assigned_id: string | null;
@@ -544,12 +549,13 @@ export default function AssetsScreen() {
       }
 
       const count = reminderData.reminder_type.length;
+      const typeName = reminderData.reminder_type[0]?.name || 'reminder';
       showToast(
-        `Reminder scheduled with ${count} type${count > 1 ? 's' : ''} successfully!`,
+        `${typeName} reminder scheduled successfully!`,
         'success',
         2000
       );
-      setShowReminderModal(false);
+      setShowReminderBottomSheet(false);
       setSelectedAssetForReminder(null);
     } catch (error: any) {
       console.error('Save reminder error:', error);
@@ -562,8 +568,8 @@ export default function AssetsScreen() {
     }
   };
 
-  const handleCloseReminderModal = () => {
-    setShowReminderModal(false);
+  const handleCloseReminderBottomSheet = () => {
+    setShowReminderBottomSheet(false);
     setSelectedAssetForReminder(null);
   };
 
@@ -593,8 +599,24 @@ export default function AssetsScreen() {
     );
   };
 
-  if (checkingCompany || userProfile?.role !== 'admin') {
-    return <AssetsSkeleton />;
+  if (checkingCompany) {
+    return (
+      <SafeAreaView style={assetStyles.container}>
+        <View style={assetStyles.loadingFullContainer}>
+          <LoadingBar variant="bar" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (userProfile?.role !== 'admin') {
+    return (
+      <SafeAreaView style={assetStyles.container}>
+        <View style={assetStyles.loadingFullContainer}>
+          <LoadingBar variant="bar" />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -607,7 +629,12 @@ export default function AssetsScreen() {
 
       <ScrollView
         contentContainerStyle={assetStyles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        nestedScrollEnabled={true}
+        bounces={false}
       >
         {/* Fleet Health Section */}
         <View style={assetStyles.fleetHealthSection}>
@@ -964,12 +991,11 @@ export default function AssetsScreen() {
         onClose={handleCloseBottomSheet}
         onEdit={handleEditAsset}
       />
-      <ReminderModal
-        visible={showReminderModal}
-        onClose={handleCloseReminderModal}
+      <ReminderBottomSheet
+        visible={showReminderBottomSheet}
+        onClose={handleCloseReminderBottomSheet}
         onSave={handleSaveReminder}
-        assetId={selectedAssetForReminder?.id}
-        assetName={selectedAssetForReminder?.asset_name}
+        asset={selectedAssetForReminder}
         loading={savingReminder}
       />
     </SafeAreaView>

@@ -614,7 +614,12 @@ export default function SettingsScreen() {
       <ScrollView
         style={styles.tabContent}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        nestedScrollEnabled={true}
+        bounces={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Company Header */}

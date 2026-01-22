@@ -130,7 +130,12 @@ export default function UserDashboardScreen() {
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        nestedScrollEnabled={true}
+        bounces={false}
       >
         {/* Welcome Card with Gradient */}
         <LinearGradient

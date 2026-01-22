@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { supabase } from '../../lib/supabase';
 
 interface ReminderData {
   [key: string]: {
@@ -34,15 +35,31 @@ interface ChecklistModalProps {
 
 const reminderTypeLabels: { [key: string]: string } = {
   oil_change: 'Oil Change',
-  tire_rotation: 'Tire Rotation / Replacement',
+  tire_rotation: 'Tire Rotation',
+  tire_replacement: 'Tire Replacement',
   general_inspection: 'General Inspection',
   fluids: 'Fluids',
   belts: 'Belts',
   lights: 'Lights',
   battery: 'Battery',
   brake_inspection: 'Brake Inspection',
-  compliance_inspection: 'Compliance Inspection (DOT, State, CDL-related)',
-  custom: 'Custom (Admin-created)',
+  compliance_inspection: 'Compliance Inspection',
+  custom_maintenance: 'Custom Maintenance',
+};
+
+// Reverse map: display name -> key
+const reminderTypeKeys: { [key: string]: string } = {
+  'Oil Change': 'oil_change',
+  'Tire Rotation': 'tire_rotation',
+  'Tire Replacement': 'tire_replacement',
+  'General Inspection': 'general_inspection',
+  'Fluids': 'fluids',
+  'Belts': 'belts',
+  'Lights': 'lights',
+  'Battery': 'battery',
+  'Brake Inspection': 'brake_inspection',
+  'Compliance Inspection': 'compliance_inspection',
+  'Custom Maintenance': 'custom_maintenance',
 };
 
 export const ChecklistModal: React.FC<ChecklistModalProps> = ({
@@ -56,22 +73,79 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
   const [editingType, setEditingType] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [availableReminderTypes, setAvailableReminderTypes] = useState<string[]>([]);
+  const [loadingReminders, setLoadingReminders] = useState(false);
 
-  // Parse reminders JSON when asset changes
+  // Fetch reminders for the asset and extract reminder types
   useEffect(() => {
-    if (visible && asset?.reminders) {
-      try {
-        const parsed = typeof asset.reminders === 'string' 
-          ? JSON.parse(asset.reminders) 
-          : asset.reminders;
-        setReminders(parsed || {});
-      } catch (error) {
-        console.error('Error parsing reminders:', error);
+    const fetchReminderTypes = async () => {
+      if (!visible || !asset?.id) {
+        setAvailableReminderTypes([]);
         setReminders({});
+        return;
       }
-    } else if (visible) {
-      setReminders({});
-    }
+
+      try {
+        setLoadingReminders(true);
+        
+        // Fetch reminders for this asset
+        const { data: remindersData, error } = await supabase
+          .from('reminders')
+          .select('reminder_type')
+          .eq('asset_id', asset.id);
+
+        if (error) {
+          console.error('Error fetching reminders:', error);
+          setAvailableReminderTypes([]);
+          setReminders({});
+          return;
+        }
+
+        // Extract unique reminder type names from all reminders
+        const typeNames = new Set<string>();
+        if (remindersData && remindersData.length > 0) {
+          remindersData.forEach((reminder: any) => {
+            if (reminder.reminder_type && Array.isArray(reminder.reminder_type)) {
+              reminder.reminder_type.forEach((typeObj: any) => {
+                if (typeObj && typeObj.name && typeObj.active) {
+                  typeNames.add(typeObj.name);
+                }
+              });
+            }
+          });
+        }
+
+        // Map display names to keys
+        const availableKeys = Array.from(typeNames)
+          .map(name => reminderTypeKeys[name])
+          .filter(key => key !== undefined) as string[];
+
+        setAvailableReminderTypes(availableKeys);
+
+        // Parse existing reminders JSON if available
+        if (asset.reminders) {
+          try {
+            const parsed = typeof asset.reminders === 'string' 
+              ? JSON.parse(asset.reminders) 
+              : asset.reminders;
+            setReminders(parsed || {});
+          } catch (error) {
+            console.error('Error parsing reminders:', error);
+            setReminders({});
+          }
+        } else {
+          setReminders({});
+        }
+      } catch (error) {
+        console.error('Error in fetchReminderTypes:', error);
+        setAvailableReminderTypes([]);
+        setReminders({});
+      } finally {
+        setLoadingReminders(false);
+      }
+    };
+
+    fetchReminderTypes();
   }, [visible, asset]);
 
   const formatDate = (dateString: string): string => {
@@ -131,7 +205,10 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
     }
   };
 
-  const reminderTypes = Object.keys(reminderTypeLabels);
+  // Only show reminder types that have been created for this asset
+  const reminderTypes = availableReminderTypes.length > 0 
+    ? availableReminderTypes 
+    : [];
 
   return (
     <Modal
@@ -158,7 +235,15 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <ScrollView 
+                style={styles.modalBody} 
+                showsVerticalScrollIndicator={true}
+                scrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                nestedScrollEnabled={true}
+                bounces={false}
+              >
                 {asset && (
                   <View style={styles.assetInfo}>
                     <Text style={styles.assetInfoLabel}>Asset:</Text>
@@ -166,29 +251,46 @@ export const ChecklistModal: React.FC<ChecklistModalProps> = ({
                   </View>
                 )}
 
-                <View style={styles.checklistContainer}>
-                  {reminderTypes.map((type) => (
-                    <View key={type} style={styles.checklistItem}>
-                      <View style={styles.checklistItemHeader}>
-                        <Text style={styles.checklistItemLabel}>
-                          {reminderTypeLabels[type] || type}
-                        </Text>
+                {loadingReminders ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#14AB98" />
+                    <Text style={styles.loadingText}>Loading reminders...</Text>
+                  </View>
+                ) : reminderTypes.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="information-circle-outline" size={48} color="#999" />
+                    <Text style={styles.emptyText}>
+                      No reminders have been scheduled for this asset yet.
+                    </Text>
+                    <Text style={styles.emptySubtext}>
+                      Schedule a reminder first to track maintenance.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.checklistContainer}>
+                    {reminderTypes.map((type) => (
+                      <View key={type} style={styles.checklistItem}>
+                        <View style={styles.checklistItemHeader}>
+                          <Text style={styles.checklistItemLabel}>
+                            {reminderTypeLabels[type] || type}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.dateButton}
+                          onPress={() => openDatePicker(type)}
+                          disabled={loading}
+                        >
+                          <Text style={styles.dateButtonText}>
+                            {reminders[type]?.lastUpdate
+                              ? formatDate(reminders[type].lastUpdate)
+                              : 'Not set'}
+                          </Text>
+                          <Ionicons name="calendar-outline" size={20} color="#14AB98" />
+                        </TouchableOpacity>
                       </View>
-                      <TouchableOpacity
-                        style={styles.dateButton}
-                        onPress={() => openDatePicker(type)}
-                        disabled={loading}
-                      >
-                        <Text style={styles.dateButtonText}>
-                          {reminders[type]?.lastUpdate
-                            ? formatDate(reminders[type].lastUpdate)
-                            : 'Not set'}
-                        </Text>
-                        <Ionicons name="calendar-outline" size={20} color="#14AB98" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
+                    ))}
+                  </View>
+                )}
               </ScrollView>
 
               <View style={styles.modalFooter}>
@@ -381,5 +483,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#14AB98',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });

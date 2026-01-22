@@ -24,7 +24,12 @@ export const DashboardSkeleton: React.FC = () => (
     <TopBar title="Dashboard" showHamburger={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <WelcomeCardSkeleton />
       <View style={skeletonScreenStyles.statsContainer}>
@@ -54,7 +59,12 @@ export const AssetsSkeleton: React.FC = () => (
     <TopBar title="Assets" showHamburger={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       {/* Fleet Health Section */}
       <View style={skeletonScreenStyles.fleetHealthSection}>
@@ -101,7 +111,12 @@ export const UserAssetsSkeleton: React.FC = () => (
     <TopBar title="Assets" showHamburger={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <View style={skeletonScreenStyles.greetingSection}>
         <Skeleton width={200} height={24} borderRadius={4} />
@@ -128,7 +143,12 @@ export const ProfileSkeleton: React.FC = () => (
     <TopBar title="Profile" showBack={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <View style={skeletonScreenStyles.profileSection}>
         <ProfileAvatarSkeleton />
@@ -157,7 +177,12 @@ export const SettingsSkeleton: React.FC = () => (
     </View>
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <View style={skeletonScreenStyles.profileSection}>
         <ProfileAvatarSkeleton />
@@ -179,7 +204,12 @@ export const NotificationsSkeleton: React.FC = () => (
     <TopBar title="Notifications" showHamburger={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <View style={skeletonScreenStyles.welcomeSection}>
         <Skeleton width={80} height={28} borderRadius={12} style={{ marginBottom: 8 }} />
@@ -200,7 +230,12 @@ export const AdminDashboardSkeleton: React.FC = () => (
     <TopBar title="Admin Dashboard" showHamburger={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <View style={skeletonScreenStyles.welcomeSection}>
         <Skeleton width={200} height={28} borderRadius={4} />
@@ -256,7 +291,12 @@ export const CompanySetupSkeleton: React.FC = () => (
     <TopBar title="Company Setup" showBack={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <View style={skeletonScreenStyles.welcomeSection}>
         <Skeleton width={200} height={28} borderRadius={4} />
@@ -285,7 +325,12 @@ export const NotificationDetailSkeleton: React.FC = () => (
     <TopBar title="Notification Details" showBack={true} />
     <ScrollView
       contentContainerStyle={skeletonScreenStyles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled={true}
+      bounces={false}
     >
       <View style={skeletonScreenStyles.notificationDetailCard}>
         <View style={skeletonScreenStyles.notificationDetailHeader}>
