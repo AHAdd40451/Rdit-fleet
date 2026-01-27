@@ -13,10 +13,11 @@ import * as ImagePicker from 'expo-image-picker';
 
 // Conditionally import TextRecognition - it requires native code
 // Use dynamic import for better compatibility with Expo modules
-let getTextFromFrame: ((inputString: string, isBase64?: boolean) => Promise<string[]>) | null = null;
-let loadPromise: Promise<typeof getTextFromFrame> | null = null;
+type TextRecognitionFunction = (inputString: string, isBase64?: boolean) => Promise<string[]>;
+let getTextFromFrame: TextRecognitionFunction | null = null;
+let loadPromise: Promise<TextRecognitionFunction | null> | null = null;
 
-const loadTextRecognition = async (): Promise<typeof getTextFromFrame> => {
+const loadTextRecognition = async (): Promise<TextRecognitionFunction | null> => {
   // Return cached function if already loaded
   if (getTextFromFrame) {
     return getTextFromFrame;
@@ -28,7 +29,7 @@ const loadTextRecognition = async (): Promise<typeof getTextFromFrame> => {
   }
 
   // Start loading
-  loadPromise = (async () => {
+  loadPromise = (async (): Promise<TextRecognitionFunction | null> => {
     try {
       // Use dynamic import for ES modules (works better with Expo autolinking)
       const textRecognitionModule = await import('expo-text-recognition');
@@ -52,7 +53,7 @@ const loadTextRecognition = async (): Promise<typeof getTextFromFrame> => {
         return getTextFromFrame;
       }
       else if (typeof textRecognitionModule.default === 'function') {
-        getTextFromFrame = textRecognitionModule.default;
+        getTextFromFrame = textRecognitionModule.default as unknown as TextRecognitionFunction;
         console.log('✅ Using default export as function');
         return getTextFromFrame;
       }

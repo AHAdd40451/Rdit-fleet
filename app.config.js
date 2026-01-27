@@ -28,8 +28,8 @@ module.exports = {
     android: {
       package: 'com.anonymous.reditfleet',
 
-      // 🔴 REQUIRED FOR ANDROID PUSH (FCM)
-      googleServicesFile: './android/app/google-services.json',
+      // 🔴 REQUIRED FOR ANDROID PUSH (FCM) - uncomment after prebuild and add google-services.json
+      // googleServicesFile: './android/app/google-services.json',
 
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
