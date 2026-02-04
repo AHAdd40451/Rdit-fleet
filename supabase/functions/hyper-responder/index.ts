@@ -366,6 +366,32 @@ Deno.serve(async (req: Request) => {
         notificationsCreated += count
         processedReminders.push(reminder)
         console.log(`Successfully created ${count} notifications for reminder ${reminder.id} (asset ${asset.id}, ${asset.asset_name}, reminder_types: ${typesNeedingNotification.join(', ')})`)
+
+        // Send push notifications to users' devices
+        const userIds = usersToNotify.map((u: { id: number }) => u.id)
+        if (userIds.length > 0) {
+          try {
+            const pushUrl = `${supabaseUrl}/functions/v1/send-push-notification`
+            const pushRes = await fetch(pushUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                userIds,
+                title: 'Maintenance Reminder',
+                body: `Maintenance reminder: ${asset.asset_name || 'Asset'} requires ${typesNeedingNotification.join(', ')}`,
+                data: { type: 'maintenance_reminder', asset_id: asset.id },
+              }),
+            })
+            if (!pushRes.ok) {
+              console.warn('send-push-notification responded with', pushRes.status, await pushRes.text())
+            }
+          } catch (pushErr) {
+            console.warn('Error calling send-push-notification:', pushErr)
+          }
+        }
       }
     }
 

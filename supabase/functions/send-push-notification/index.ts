@@ -1,11 +1,16 @@
 // Supabase Edge Function to send push notifications via Expo Push Notification Service
 // Deploy with: supabase functions deploy send-push-notification
+//
+// If you deploy from Supabase Dashboard editor (no config.toml), call with anon key to avoid 401:
+//   Authorization: Bearer YOUR_ANON_KEY
+// (Get anon key from Dashboard → Settings → API. Safe for client-side; no user login required.)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -16,10 +21,33 @@ serve(async (req) => {
   }
 
   try {
-    const { userIds, title, body, data } = await req.json()
-    
-    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      throw new Error('userIds must be a non-empty array')
+    let payload: { userIds?: unknown; userId?: unknown; user_id?: unknown; title?: string; body?: string; data?: object }
+    try {
+      const text = await req.text()
+      payload = text ? JSON.parse(text) : {}
+    } catch {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Request body must be valid JSON with userIds (array), title, and body',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+    const { title, body, data } = payload
+
+    // Accept userIds (array), userId (single), or user_id (array or single)
+    const rawIds = payload.userIds ?? payload.userId ?? payload.user_id
+    const userIds = Array.isArray(rawIds) ? rawIds : rawIds != null ? [rawIds] : []
+
+    if (userIds.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'userIds must be a non-empty array. Send { "userIds": ["id1", "id2"], "title": "...", "body": "..." }',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
     }
     
     if (!title || !body) {
@@ -28,11 +56,6 @@ serve(async (req) => {
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase environment variables')
-    }
-    
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
     
     // Get push tokens for the users

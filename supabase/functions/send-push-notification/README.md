@@ -94,6 +94,27 @@ Error:
 }
 ```
 
+## Deploying from Supabase Dashboard editor
+
+If you deploy this function from the **Dashboard → Edge Functions → Editor** (not CLI), the dashboard does **not** use `config.toml`, so the function will still require an `Authorization` header and you may see `401 Missing authorization header`.
+
+You have two options:
+
+1. **Call with the anon key (recommended)**  
+   Send the project’s **anon** key in the header. It’s safe for client-side use and does not require a logged-in user:
+   ```http
+   Authorization: Bearer YOUR_ANON_KEY
+   ```
+   Get it from **Dashboard → Settings → API → Project API keys → anon public**.
+
+2. **One-time CLI deploy to disable JWT check**  
+   From your project root (with `supabase/config.toml` that has `verify_jwt = false` for this function), run once:
+   ```bash
+   supabase link --project-ref YOUR_PROJECT_REF
+   supabase functions deploy send-push-notification
+   ```
+   After that you can keep editing and redeploying from the Dashboard; the “no JWT” setting is stored for the function.
+
 ## Testing
 
 You can test the function locally:

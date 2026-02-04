@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1052933847176",
+    "project_id": "redit-fleet",
+    "storage_bucket": "redit-fleet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1052933847176:android:33185b29fd21e80bd5c73d",
+        "android_client_info": {
+          "package_name": "com.anonymous.reditfleet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAH1zJJKYUaYlAunfVO5ctCuFuZiFMlKCA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

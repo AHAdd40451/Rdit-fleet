@@ -454,6 +454,20 @@ export default function AssetsScreen() {
               }));
 
               await supabase.from('notifications').insert(notifications);
+
+              // Send push notifications to linked users' devices
+              try {
+                await supabase.functions.invoke('send-push-notification', {
+                  body: {
+                    userIds: linkedUsers.map(u => u.id),
+                    title: 'New Asset Created',
+                    body: `New asset "${assetData.asset_name}" has been created by your admin.`,
+                    data: { type: 'asset_created', asset_id: insertedAsset.id },
+                  },
+                });
+              } catch (pushErr) {
+                console.error('Error sending push notifications:', pushErr);
+              }
             }
           } catch (notificationErr) {
             console.error('Error in notification creation:', notificationErr);

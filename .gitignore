@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# credentials (never commit)
+credentials/
+*-firebase-adminsdk-*.json

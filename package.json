@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
+    "test:push-notification": "node scripts/test-send-push-notification.js",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -19,6 +20,7 @@
     "@supabase/supabase-js": "^2.87.1",
     "expo": "~54.0.26",
     "expo-constants": "~18.0.11",
+    "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
     "expo-image-picker": "~17.0.10",
     "expo-linear-gradient": "~15.0.8",

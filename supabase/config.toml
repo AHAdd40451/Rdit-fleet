@@ -1,0 +1,3 @@
+# Allow invoking send-push-notification without Authorization header
+[functions.send-push-notification]
+verify_jwt = false
