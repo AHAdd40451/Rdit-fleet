@@ -26,8 +26,9 @@ export default function VerifyOtpScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleVerifyOtp = async () => {
-    if (!otp || otp.length !== 6) {
-      showToast('Please enter a valid 6-digit OTP code', 'error');
+    const isTestOtp = otp === '0000';
+    if (!otp || (otp.length !== 6 && !isTestOtp)) {
+      showToast('Please enter a valid 6-digit OTP code (or 0000 for testing)', 'error');
       return;
     }
 
@@ -47,14 +48,17 @@ export default function VerifyOtpScreen() {
         throw new Error('User not found. Please contact admin.');
       }
 
-      // Check if OTP exists
-      if (!userData.otp) {
-        throw new Error('No OTP found. Please request a new code.');
-      }
+      // Testing: accept 0000 as valid OTP without checking DB
+      if (!isTestOtp) {
+        // Check if OTP exists
+        if (!userData.otp) {
+          throw new Error('No OTP found. Please request a new code.');
+        }
 
-      // Verify OTP (no expiration check)
-      if (userData.otp !== otp) {
-        throw new Error('Invalid OTP code. Please try again.');
+        // Verify OTP (no expiration check)
+        if (userData.otp !== otp) {
+          throw new Error('Invalid OTP code. Please try again.');
+        }
       }
 
       // OTP is valid - clear OTP from database
@@ -233,7 +237,7 @@ export default function VerifyOtpScreen() {
               style={styles.input}
               keyboardType="number-pad"
               maxLength={6}
-              placeholder="Enter 6-digit code"
+              placeholder="6-digit code or 0000 for testing"
             />
           </View>
 
