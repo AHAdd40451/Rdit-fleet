@@ -17,3 +17,4 @@ npx expo run:android
 
 for test push notification run this function
 npm run test:push-notification
+
