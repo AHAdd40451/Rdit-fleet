@@ -15,6 +15,14 @@ for run build preview locally
 npx expo prebuild --clean
 npx expo run:android
 
+
+
+-----------------------set screat-----------------------------
+supabase secrets set STRIPE_SECRET_KEY=
+
+
+-----------------------Testing Script command---------------------------
+test script for stripe 
+node scripts/test-create-payment-intent.js
 for test push notification run this function
 npm run test:push-notification
-

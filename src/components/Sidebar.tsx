@@ -107,6 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ visible, onClose }) => {
       route: '/notifications',
       badge: unreadCount,
     },
+    { label: 'Payment', icon: 'card-outline', route: '/payment' },
     // { label: 'Help', icon: 'help-circle-outline', route: '/help' },
     { label: 'Setting', icon: 'settings-outline', route: '/settings' },
   ];

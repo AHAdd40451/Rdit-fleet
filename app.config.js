@@ -60,6 +60,12 @@ module.exports = {
           sounds: [],
         },
       ],
+      [
+        '@stripe/stripe-react-native',
+        {
+          enableGooglePay: true,
+        },
+      ],
     ],
 
     updates: {
@@ -75,6 +81,10 @@ module.exports = {
       supabaseAnonKey:
         process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlanRnZmRqZmdyemF1dnp0c29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzOTY1MDMsImV4cCI6MjA4MDk3MjUwM30.CWBmGhPxHF0CC68M1TReTWJMu6tWYFqic1FaYT5jdAs',
+
+      stripePublishableKey:
+        process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+        'pk_test_51T1VBTPtxIqhswZcZaaJdLsBI3ivF35RQe80jz6tSBOBltsjGhk67h7VU6YFphStJnLwmu9RpkRLwjdGY9YyzteT00DsoptRjn',
 
       eas: {
         projectId: 'd9ae98c5-4042-4ff3-9094-930cad7e7154',

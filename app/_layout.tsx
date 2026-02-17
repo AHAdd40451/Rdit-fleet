@@ -8,6 +8,8 @@ import { useEffect, useRef } from 'react';
 import * as Linking from 'expo-linking';
 import { LogBox } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { StripeProvider } from '@stripe/stripe-react-native';
+import Constants from 'expo-constants';
 import '../src/lib/notifications'; // Import notification handler
 import { supabase } from '../lib/supabase';
 
@@ -277,21 +279,31 @@ function RootLayoutNav() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="payment"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
 
+const stripePublishableKey = Constants.expoConfig?.extra?.stripePublishableKey ?? '';
+
 export default function RootLayout() {
   return (
     <PaperProvider>
-      <ToastProvider>
-        <AuthProvider>
-          <ConfirmationModalProvider>
-            <RootLayoutNav />
-            <StatusBar style="auto" />
-          </ConfirmationModalProvider>
-        </AuthProvider>
-      </ToastProvider>
+      <StripeProvider publishableKey={stripePublishableKey}>
+        <ToastProvider>
+          <AuthProvider>
+            <ConfirmationModalProvider>
+              <RootLayoutNav />
+              <StatusBar style="auto" />
+            </ConfirmationModalProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </StripeProvider>
     </PaperProvider>
   );
 }

@@ -1,3 +1,6 @@
-# Allow invoking send-push-notification without Authorization header
+# Allow invoking without JWT (use anon key only when calling from app)
 [functions.send-push-notification]
+verify_jwt = false
+
+[functions.create-payment-intent]
 verify_jwt = false
