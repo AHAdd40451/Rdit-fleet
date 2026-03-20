@@ -16,7 +16,10 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
   const router = useRouter();
   const segments = useSegments();
   const insets = useSafeAreaInsets();
-  const currentSegment = activeRoute || segments[0] || '';
+  // const currentSegment = activeRoute || segments[0] || '';
+  // const currentSegment = activeRoute || segments[0] || '';
+  // const currentSegment = activeRoute || '';
+
   const { userProfile } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -69,12 +72,17 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
     router.push(route as any);
   };
 
+  // const isActive = (route: string) => {
+  //   const routeName = route.replace('/', '');
+  //   // Check if current segment matches the route name
+  //   return currentSegment === routeName || segments.some(seg => seg === routeName);
+  // };
+
+
   const isActive = (route: string) => {
     const routeName = route.replace('/', '');
-    // Check if current segment matches the route name
-    return currentSegment === routeName || segments.some(seg => seg === routeName);
-  };
-
+    return segments.includes(routeName);
+  }; console.log('segments =>', segments);
   // Show bottom nav for all authenticated users
   if (!userProfile) {
     return null;
@@ -88,15 +96,20 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
         {/* Home Icon */}
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => handleNavigation('/home')}
+          // onPress={() => handleNavigation('/home')}
+          onPress={() => handleNavigation('/adminDashboard')}
           activeOpacity={0.7}
         >
           <Ionicons
-            name={isActive('/home') ? 'home' : 'home-outline'}
+            // name={isActive('/home') ? 'home' : 'home-outline'}
+            name={isActive('/adminDashboard') ? 'home' : 'home-outline'}
+            color={isActive('/adminDashboard') ? THEME_COLOR : '#666'}
             size={24}
-            color={isActive('/home') ? THEME_COLOR : '#666'}
           />
-          <Text style={[styles.label, { color: isActive('/home') ? THEME_COLOR : '#666' }]}>
+          {/* <Text style={[styles.label, { color: isActive('/home') ? THEME_COLOR : '#666' }]}>
+            Home
+          </Text> */}
+          <Text style={[styles.label, { color: isActive('/adminDashboard') ? THEME_COLOR : '#666' }]}>
             Home
           </Text>
         </TouchableOpacity>
