@@ -27,10 +27,18 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
+  // const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
   const [loginType, setLoginType] = useState<LoginType>('admin');
   const [loading, setLoading] = useState(false);
   const redirectingRef = useRef(false);
+
+  useEffect(() => {
+    const us = getCountryByCca2('US');
+    if (us) {
+      setSelectedCountry(us);
+    }
+  }, []);
 
   // Redirect if already logged in (but not if we're currently logging in)
   useEffect(() => {
@@ -438,7 +446,7 @@ export default function LoginScreen() {
               </>
             ) : (
               <View style={styles.phoneInputContainer}>
-                <PhoneInput
+                {/* <PhoneInput
                   value={phoneNumber}
                   onChangePhoneNumber={setPhoneNumber}
                   selectedCountry={selectedCountry}
@@ -483,7 +491,54 @@ export default function LoginScreen() {
                     },
                   }}
                   placeholder="Phone Number"
-                />
+                /> */}
+                <PhoneInput
+  value={phoneNumber}
+  onChangePhoneNumber={setPhoneNumber}
+  selectedCountry={selectedCountry || undefined}
+  onChangeSelectedCountry={setSelectedCountry}
+  defaultCountry="US"
+  placeholder="Phone Number"
+  phoneInputStyles={{
+    container: {
+      minHeight: 48,
+      backgroundColor: '#fff',
+      borderWidth: 1,
+      borderColor: '#E0E0E0',
+      borderRadius: 8,
+      paddingTop: 14,
+      paddingRight: 12,
+      paddingBottom: 14,
+      paddingLeft: 12,
+    },
+    flagContainer: {
+      backgroundColor: 'transparent',
+      paddingRight: 8,
+    },
+    flag: {
+      fontSize: 20,
+    },
+    caret: {
+      color: '#000',
+      fontSize: 16,
+    },
+    divider: {
+      backgroundColor: '#E0E0E0',
+      width: 1,
+      marginHorizontal: 8,
+    },
+    callingCode: {
+      fontSize: 16,
+      color: '#000',
+      fontWeight: '400',
+    },
+    input: {
+      fontSize: 16,
+      color: '#000',
+      flex: 1,
+    },
+  }}
+/>
               </View>
             )}
           </View>

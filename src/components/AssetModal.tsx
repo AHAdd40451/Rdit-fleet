@@ -19,6 +19,7 @@ import { Input } from './Input';
 import { LoadingBar } from './LoadingBar';
 import { extractMileageFromOCR } from '../utils/extractMileageFromOCR';
 import { extractVinFromOCR } from '../utils/extractVinFromOCR';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 // Conditionally import TextRecognition - it requires native code
 // Use dynamic import for better compatibility with Expo modules
@@ -861,7 +862,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                             {isProcessingVinOCR ? (
                               <ActivityIndicator size="small" color="#fff" />
                             ) : (
-                              <Text style={styles.ocrButtonText}>📷 OCR</Text>
+                              <Text style={styles.ocrButtonText}> <Icon name="camera" style={{ position: 'relative', right: 80, top: 10, fontSize: 20, }} /></Text>
                             )}
                           </TouchableOpacity>
                         </View>
@@ -957,7 +958,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                             {isProcessingOdometerOCR ? (
                               <ActivityIndicator size="small" color="#fff" />
                             ) : (
-                              <Text style={styles.ocrButtonText}>📷 OCR</Text>
+                              <Text style={styles.ocrButtonText}> <Icon name="camera" style={styles.me} /> </Text>
                             )}
                           </TouchableOpacity>
                         </View>
@@ -1000,7 +1001,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                             {isProcessingOCR ? (
                               <ActivityIndicator size="small" color="#fff" />
                             ) : (
-                              <Text style={styles.ocrButtonText}>📷 OCR</Text>
+                              <Text style={styles.ocrButtonText}><Icon name="camera" style={styles.me} /></Text>
                             )}
                           </TouchableOpacity>
                         </View>
@@ -1043,7 +1044,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                             style={styles.takePhotoButton}
                             disabled={loading}
                           >
-                            <Text style={styles.takePhotoButtonText}>📷 Take Photo</Text>
+                            <Text style={styles.takePhotoButtonText}><Icon name="camera" style={styles.me} /> Take Photo</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -1413,6 +1414,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    display: 'flex'
   },
   processingText: {
     color: '#14AB98',
@@ -1421,6 +1423,10 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontStyle: 'italic',
   },
+  me:{
+    fontSize: 20,
+    marginLeft: 0
+  }
 });
 
 
