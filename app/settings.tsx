@@ -838,7 +838,7 @@ export default function SettingsScreen() {
       >
         {/* Company Header */}
         <View style={styles.companyHeader}>
-          <Text style={styles.companyTitle}>Company Information</Text>
+          <Text style={styles.companyTitle}>Company Inrmation</Text>
           <Text style={styles.companySubtitle}>
             Manage your company details and settings
           </Text>
@@ -883,9 +883,9 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>State (Optional)</Text>
+            <Text style={styles.label}>State *</Text>
             <Input
-              placeholder="Enter state or province"
+              placeholder="Enter state or province (Required)"
               value={state}
               onChangeText={setState}
               editable={isEditingCompany}
@@ -946,7 +946,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Timezone (Optional)</Text>
+            <Text style={styles.label}>Timezone *</Text>
             <Input
               placeholder="Enter timezone (e.g., America/New_York)"
               value={timezone}
