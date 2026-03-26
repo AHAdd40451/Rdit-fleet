@@ -59,7 +59,8 @@ export const assetStyles = StyleSheet.create({
     gaugeLabel: {
       fontSize: 12,
       color: '#666',
-      marginTop: 4,
+      marginTop: 0,
+      margin:8,
     },
     gaugeProgress: {
       position: 'absolute',
