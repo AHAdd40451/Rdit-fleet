@@ -882,8 +882,10 @@ export default function SettingsScreen() {
             />
           </View>
 
+
+
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>State (Optional)</Text>
+            <Text style={styles.label}>State *</Text>
             <Input
               placeholder="Enter state or province"
               value={state}
@@ -946,7 +948,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Timezone (Optional)</Text>
+            <Text style={styles.label}>Timezone *</Text>
             <Input
               placeholder="Enter timezone (e.g., America/New_York)"
               value={timezone}
