@@ -838,7 +838,7 @@ export default function SettingsScreen() {
       >
         {/* Company Header */}
         <View style={styles.companyHeader}>
-          <Text style={styles.companyTitle}>Company Inrmation</Text>
+          <Text style={styles.companyTitle}>Company Information</Text>
           <Text style={styles.companySubtitle}>
             Manage your company details and settings
           </Text>
@@ -887,7 +887,7 @@ export default function SettingsScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>State *</Text>
             <Input
-              placeholder="Enter state or province (Required)"
+              placeholder="Enter state or province"
               value={state}
               onChangeText={setState}
               editable={isEditingCompany}
