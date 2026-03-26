@@ -882,6 +882,8 @@ export default function SettingsScreen() {
             />
           </View>
 
+
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>State *</Text>
             <Input
