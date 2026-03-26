@@ -187,7 +187,7 @@ export default function SignupScreen() {
           {/* Description Text */}
           <Text style={styles.description}>
             Create your account to get started.{'\n'}
-            Join Redi Fleet today.
+            Join RediFleet today.
           </Text>
 
           {/* Input Fields */}
