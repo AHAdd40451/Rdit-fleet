@@ -27,7 +27,7 @@ export default function CompanySetupScreen() {
   const { session, userProfile, user, loading: authLoading } = useAuth();
 
   const [companyName, setCompanyName] = useState('');
-  const [country, setCountry] = useState('');
+  const [country, setCountry] = useState('United States');
   const [countryCode, setCountryCode] = useState('US');
   const [state, setState] = useState('');
   const [legalName, setLegalName] = useState('');
@@ -39,10 +39,6 @@ export default function CompanySetupScreen() {
   const [loading, setLoading] = useState(false);
   const [checkingCompany, setCheckingCompany] = useState(true);
 
-  // const onSelectCountry = (c) => {
-  //   setCountryCode(c.cca2);
-  //   setCountry(c.name.common);
-  // };
   const onSelectCountry = (c) => {
     setCountryCode(c.cca2);
     setCountry(c.name);
@@ -102,7 +98,7 @@ export default function CompanySetupScreen() {
 
   const handleCreateCompany = async () => {
 
-    if (!companyName.trim() || !country.trim()) {
+    if (!companyName.trim() || !country.trim() || !state.trim() || !timezone.trim()) {
       showToast('Please fill in all required fields', 'error');
       return;
     }
@@ -198,7 +194,7 @@ export default function CompanySetupScreen() {
 
               <Input
                 variant="text"
-                label="State (Required)"
+                label="State *"
                 value={state}
                 onChangeText={setState}
                 style={styles.input}
@@ -247,7 +243,7 @@ export default function CompanySetupScreen() {
 
               <Input
                 variant="text"
-                label="Timezone (Required)"
+                label="Timezone *"
                 value={timezone}
                 onChangeText={setTimezone}
                 style={styles.input}
