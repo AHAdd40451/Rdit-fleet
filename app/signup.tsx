@@ -249,8 +249,6 @@ export default function SignupScreen() {
               onPress={() => router.push('/')}
             />
           </View>
-
-          <View style={styles.divider} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

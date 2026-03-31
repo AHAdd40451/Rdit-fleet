@@ -446,11 +446,13 @@ export default function LoginScreen() {
               </>
             ) : (
               <View style={styles.phoneInputContainer}>
-                {/* <PhoneInput
+                <PhoneInput
                   value={phoneNumber}
                   onChangePhoneNumber={setPhoneNumber}
-                  selectedCountry={selectedCountry}
+                  selectedCountry={selectedCountry || undefined}
                   onChangeSelectedCountry={setSelectedCountry}
+                  defaultCountry="US"
+                  placeholder="Phone Number"
                   phoneInputStyles={{
                     container: {
                       minHeight: 48,
@@ -490,55 +492,7 @@ export default function LoginScreen() {
                       flex: 1,
                     },
                   }}
-                  placeholder="Phone Number"
-                /> */}
-                <PhoneInput
-  value={phoneNumber}
-  onChangePhoneNumber={setPhoneNumber}
-  selectedCountry={selectedCountry || undefined}
-  onChangeSelectedCountry={setSelectedCountry}
-  defaultCountry="US"
-  placeholder="Phone Number"
-  phoneInputStyles={{
-    container: {
-      minHeight: 48,
-      backgroundColor: '#fff',
-      borderWidth: 1,
-      borderColor: '#E0E0E0',
-      borderRadius: 8,
-      paddingTop: 14,
-      paddingRight: 12,
-      paddingBottom: 14,
-      paddingLeft: 12,
-    },
-    flagContainer: {
-      backgroundColor: 'transparent',
-      paddingRight: 8,
-    },
-    flag: {
-      fontSize: 20,
-    },
-    caret: {
-      color: '#000',
-      fontSize: 16,
-    },
-    divider: {
-      backgroundColor: '#E0E0E0',
-      width: 1,
-      marginHorizontal: 8,
-    },
-    callingCode: {
-      fontSize: 16,
-      color: '#000',
-      fontWeight: '400',
-    },
-    input: {
-      fontSize: 16,
-      color: '#000',
-      flex: 1,
-    },
-  }}
-/>
+                />
               </View>
             )}
           </View>
@@ -576,7 +530,6 @@ export default function LoginScreen() {
              
             </View>
           )}
-           <View style={styles.divider} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

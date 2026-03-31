@@ -19,7 +19,7 @@ export const loginStyles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    // marginBottom: 24,
   },
   logoImage: {
     width: 260,
