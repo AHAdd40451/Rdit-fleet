@@ -17,6 +17,7 @@ import { LoadingBar } from '../src/components/LoadingBar';
 import { useToast } from '../src/components/Toast';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/contexts/AuthContext';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 type LoginType = 'admin' | 'crew';
 
@@ -45,7 +46,7 @@ export default function LoginScreen() {
     const checkAndRedirect = async () => {
       // Don't redirect if we're in the middle of a login process
       if (loading || redirectingRef.current) return;
-      
+
       if (session && userProfile && userProfile.role) {
         if (userProfile.role === 'admin') {
           // Check if company exists for admin before redirecting
@@ -110,10 +111,10 @@ export default function LoginScreen() {
 
         // Fetch user profile to get role
         await refreshUserProfile();
-        
+
         // Wait a moment for the profile to be fetched and context to update
         await new Promise(resolve => setTimeout(resolve, 800));
-        
+
         // Get the updated profile directly from database to ensure we have the latest data
         const { data: profileData, error: profileError } = await supabase
           .from('users')
@@ -136,7 +137,7 @@ export default function LoginScreen() {
         }
 
         showToast('Login successful!', 'success', 1000);
-        
+
         // Navigate to appropriate dashboard based on role
         // Prevent multiple redirects
         if (redirectingRef.current) {
@@ -144,11 +145,11 @@ export default function LoginScreen() {
           return;
         }
         redirectingRef.current = true;
-        
+
         // Redirect immediately after getting profile data
         try {
           let redirectPath = '/company'; // Default fallback
-          
+
           if (profileData.role === 'admin') {
             // Check if company exists for admin
             const { data: companyData, error: companyError } = await supabase
@@ -167,7 +168,7 @@ export default function LoginScreen() {
           } else if (profileData.role === 'user') {
             redirectPath = '/userDashboard';
           }
-          
+
           console.log('Redirecting to:', redirectPath);
           // Use replace to navigate
           router.replace(redirectPath);
@@ -184,10 +185,10 @@ export default function LoginScreen() {
         }
       } catch (error: any) {
         console.error('Login error:', error);
-        
+
         // Provide user-friendly error messages
         let errorMessage = 'An error occurred during login. Please try again.';
-        
+
         if (error.message) {
           if (error.message.includes('Invalid login credentials')) {
             errorMessage = 'Invalid email or password. Please check your credentials.';
@@ -197,7 +198,7 @@ export default function LoginScreen() {
             errorMessage = error.message;
           }
         }
-        
+
         showToast(errorMessage, 'error');
         redirectingRef.current = false;
       } finally {
@@ -219,20 +220,20 @@ export default function LoginScreen() {
       // Format phone number with country code
       // Access calling code from selectedCountry object
       let callingCode = '1'; // Default to USA
-      
+
       if (selectedCountry) {
 
-        
+
         // Try different possible property names for calling code
         const possibleProperties = [
           'callingCode',
-          'calling_code', 
+          'calling_code',
           'dialCode',
           'phoneCode',
           'countryCode',
           'phone_code'
         ];
-        
+
         for (const prop of possibleProperties) {
           if ((selectedCountry as any)[prop]) {
             callingCode = String((selectedCountry as any)[prop]).replace('+', '');
@@ -240,7 +241,7 @@ export default function LoginScreen() {
             break;
           }
         }
-        
+
         // If still not found, try to get it from the country's cca2 code
         if (callingCode === '1' && (selectedCountry as any).cca2) {
           // Expanded lookup table for calling codes by cca2
@@ -266,7 +267,7 @@ export default function LoginScreen() {
       } else {
         console.warn('selectedCountry is undefined');
       }
-      
+
       const formattedValue = `+${callingCode}${digitsOnly}`;
       console.log('Formatted phone number:', formattedValue);
 
@@ -287,7 +288,7 @@ export default function LoginScreen() {
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        
+
         // Save OTP to users table (no expiration)
         const { error: updateError } = await supabase
           .from('users')
@@ -298,7 +299,7 @@ export default function LoginScreen() {
           console.error('Error saving OTP:', updateError);
           throw new Error('Failed to send verification code. Please try again.');
         }
-        
+
         // Send OTP via SMS using Supabase Edge Function
         try {
           const { data: functionData, error: functionError } = await supabase.functions.invoke('send-sms-otp', {
@@ -327,9 +328,9 @@ export default function LoginScreen() {
           // Don't throw error here - OTP is already saved, user can still verify
           // Just log the error for debugging
         }
-        
+
         showToast('Verification code has been sent to your phone number', 'success');
-        
+
         // Navigate to OTP verification screen
         setTimeout(() => {
           router.push({
@@ -421,7 +422,7 @@ export default function LoginScreen() {
           </View>
 
           {/* Input Fields */}
-          <View style={styles.inputContainer}>
+          <KeyboardAwareScrollView style={styles.inputContainer}>
             {loginType === 'admin' ? (
               <>
                 <Input
@@ -433,7 +434,7 @@ export default function LoginScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
-                <Input
+                {/* <Input
                   variant="text"
                   label="Password"
                   value={password}
@@ -441,8 +442,16 @@ export default function LoginScreen() {
                   style={styles.input}
                   secureTextEntry
                   showForgotPassword
-                  onForgotPasswordPress={() => router.push('/forgot-password')}
+                /> */}
+                <Input
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  style={styles.input}
+                  isPassword={true}
                 />
+
+
               </>
             ) : (
               <View style={styles.phoneInputContainer}>
@@ -493,55 +502,55 @@ export default function LoginScreen() {
                   placeholder="Phone Number"
                 /> */}
                 <PhoneInput
-  value={phoneNumber}
-  onChangePhoneNumber={setPhoneNumber}
-  selectedCountry={selectedCountry || undefined}
-  onChangeSelectedCountry={setSelectedCountry}
-  defaultCountry="US"
-  placeholder="Phone Number"
-  phoneInputStyles={{
-    container: {
-      minHeight: 48,
-      backgroundColor: '#fff',
-      borderWidth: 1,
-      borderColor: '#E0E0E0',
-      borderRadius: 8,
-      paddingTop: 14,
-      paddingRight: 12,
-      paddingBottom: 14,
-      paddingLeft: 12,
-    },
-    flagContainer: {
-      backgroundColor: 'transparent',
-      paddingRight: 8,
-    },
-    flag: {
-      fontSize: 20,
-    },
-    caret: {
-      color: '#000',
-      fontSize: 16,
-    },
-    divider: {
-      backgroundColor: '#E0E0E0',
-      width: 1,
-      marginHorizontal: 8,
-    },
-    callingCode: {
-      fontSize: 16,
-      color: '#000',
-      fontWeight: '400',
-    },
-    input: {
-      fontSize: 16,
-      color: '#000',
-      flex: 1,
-    },
-  }}
-/>
+                  value={phoneNumber}
+                  onChangePhoneNumber={setPhoneNumber}
+                  selectedCountry={selectedCountry || undefined}
+                  onChangeSelectedCountry={setSelectedCountry}
+                  defaultCountry="US"
+                  placeholder="Phone Number"
+                  phoneInputStyles={{
+                    container: {
+                      minHeight: 48,
+                      backgroundColor: '#fff',
+                      borderWidth: 1,
+                      borderColor: '#E0E0E0',
+                      borderRadius: 8,
+                      paddingTop: 14,
+                      paddingRight: 12,
+                      paddingBottom: 14,
+                      paddingLeft: 12,
+                    },
+                    flagContainer: {
+                      backgroundColor: 'transparent',
+                      paddingRight: 8,
+                    },
+                    flag: {
+                      fontSize: 20,
+                    },
+                    caret: {
+                      color: '#000',
+                      fontSize: 16,
+                    },
+                    divider: {
+                      backgroundColor: '#E0E0E0',
+                      width: 1,
+                      marginHorizontal: 8,
+                    },
+                    callingCode: {
+                      fontSize: 16,
+                      color: '#000',
+                      fontWeight: '400',
+                    },
+                    input: {
+                      fontSize: 16,
+                      color: '#000',
+                      flex: 1,
+                    },
+                  }}
+                />
               </View>
             )}
-          </View>
+          </KeyboardAwareScrollView>
 
           {/* Login/Send Code Button with Gradient */}
           <Button
@@ -552,12 +561,13 @@ export default function LoginScreen() {
                   ? 'Logging in...'
                   : 'Sending Code...'
                 : loginType === 'admin'
-                ? 'Login'
-                : 'Send Code'
+                  ? 'Login'
+                  : 'Send Code'
             }
             onPress={handleLogin}
             disabled={loading}
           />
+
           {loading && (
             <View style={{ marginTop: 16, width: '100%', maxWidth: 400 }}>
               <LoadingBar variant="bar" />
@@ -567,16 +577,24 @@ export default function LoginScreen() {
           {/* Sign Up Link - Only show for admin */}
           {loginType === 'admin' && (
             <View style={styles.signUpContainer}>
-              <Text style={styles.signUpText}>Don't have an account? </Text>
-              <Button
+
+              <Text style={styles.signUpText}>
+                Don't have an account?{' '}
+                <Text
+                  onPress={() => router.push('/signup')}
+                >
+                  Sign Up
+                </Text>
+              </Text>
+              {/* <Button
                 variant="default"
                 title="Sign Up"
                 onPress={() => router.push('/signup')}
-              />
-             
+              /> */}
+
             </View>
           )}
-           <View style={styles.divider} />
+          <View style={styles.divider} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
