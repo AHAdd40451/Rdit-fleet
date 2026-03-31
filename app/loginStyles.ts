@@ -85,6 +85,7 @@ export const loginStyles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     marginBottom: 24,
+    
   },
   input: {
     marginBottom: 16,
@@ -151,6 +152,8 @@ export const loginStyles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 12,
     color: '#666',
+    marginLeft: 220,
+    // justifyContent: 'flex-end',
   },
   buttonContainer: {
     width: '100%',

@@ -25,7 +25,7 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   // Redirect if already logged in
   useEffect(() => {
     const checkAndRedirect = async () => {
@@ -100,7 +100,7 @@ export default function SignupScreen() {
         last_name: lastName.trim(),
         email: email.trim(),
         password: password,
-        role: 'admin', 
+        role: 'admin',
       };
       const { error: dbError } = await supabase
         .from('users')
@@ -125,7 +125,7 @@ export default function SignupScreen() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       showToast('Account created successfully!', 'success', 2000);
-      
+
       setTimeout(async () => {
         // Get the created user profile to check role
         const { data: profileData, error: profileError } = await supabase
@@ -223,7 +223,7 @@ export default function SignupScreen() {
               value={password}
               onChangeText={setPassword}
               style={styles.input}
-              secureTextEntry
+              isPassword={true}
             />
           </View>
 
@@ -242,12 +242,19 @@ export default function SignupScreen() {
 
           {/* Login Link */}
           <View style={styles.signUpContainer}>
-            <Text style={styles.signUpText}>Already have an account? </Text>
-            <Button
+            <Text style={styles.signUpText}>Already have an account? {' '}
+              <Text
+                onPress={() => router.push('/')}
+
+              >
+                Login
+              </Text>
+            </Text>
+            {/* <Button
               variant="default"
               title="Login"
               onPress={() => router.push('/')}
-            />
+            /> */}
           </View>
 
           <View style={styles.divider} />
