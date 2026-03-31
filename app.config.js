@@ -19,6 +19,8 @@ module.exports = {
 
     ios: {
       supportsTablet: true,
+      bundleIdentifier: 'com.ellisperez.redifleet',
+      buildNumber: '3',
       infoPlist: {
         NSCameraUsageDescription:
           'This app needs access to your camera to take photos of assets.',
