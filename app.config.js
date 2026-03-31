@@ -2,14 +2,14 @@ require('dotenv').config();
 
 module.exports = {
   expo: {
-    name: 'redit-fleet',
-    slug: 'redit-fleet',
+    name: 'RediFleet',
+    slug: 'RediFleet',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     newArchEnabled: true,
-    scheme: 'redit-fleet',
+    scheme: 'RediFleet',
 
     splash: {
       image: './assets/splash-icon.png',
@@ -27,6 +27,8 @@ module.exports = {
 
     android: {
       package: 'com.anonymous.reditfleet',
+      versionCode: 2,
+      version: '1.0.1',
 
       // 🔴 REQUIRED FOR ANDROID PUSH (FCM)
       googleServicesFile: './app/google-services.json',
@@ -87,7 +89,7 @@ module.exports = {
         'pk_test_51T1VBTPtxIqhswZcZaaJdLsBI3ivF35RQe80jz6tSBOBltsjGhk67h7VU6YFphStJnLwmu9RpkRLwjdGY9YyzteT00DsoptRjn',
 
       eas: {
-        projectId: 'd9ae98c5-4042-4ff3-9094-930cad7e7154',
+        projectId: "c53fd1f4-40f1-4f74-9019-9b12e1355419"
       },
     },
   },
