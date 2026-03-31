@@ -153,15 +153,15 @@ export default function CompanySetupScreen() {
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
 
-          <TopBar
-            // title="Company Setup"
+          {/* <TopBar
+            title="Company Setup"
             showBack={true}
-          />
+          /> */}
 
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeTitle}>Company Setup</Text>
             <Text style={styles.welcomeSubtitle}>
-              Please provide your company information to get started.
+              Please provide your company information to get started with RediFleet.
             </Text>
           </View>
 
@@ -327,6 +327,7 @@ const styles = StyleSheet.create({
 
   welcomeSection: {
     padding: 20,
+    marginTop: 30,
   },
 
   welcomeTitle: {
