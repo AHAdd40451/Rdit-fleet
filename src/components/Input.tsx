@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Text,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 
 const PRIMARY_COLOR = '#06402B';
 const OUTLINE_COLOR = '#E0E0E0';
@@ -21,6 +22,7 @@ export interface InputProps extends TextInputProps {
   showForgotPassword?: boolean;
   onForgotPasswordPress?: () => void;
   label?: string;
+  isPassword?: boolean;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -32,10 +34,11 @@ export const Input: React.FC<InputProps> = ({
   label,
   placeholder,
   value,
+  isPassword = false,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-
+  const [secure, setSecure] = useState(isPassword);
   return (
     <View style={[styles.container, style]}>
       <View
@@ -45,13 +48,12 @@ export const Input: React.FC<InputProps> = ({
         ]}
       >
         <TextInput
-          style={[
-            styles.input,
-            showForgotPassword && styles.inputWithForgotPassword,
-          ]}
+          key={secure ? 'secure' : 'visible'}
+          style={styles.input}
           placeholder={label || placeholder}
           placeholderTextColor="#999"
           value={value}
+          secureTextEntry={secure}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           {...props}
@@ -59,11 +61,17 @@ export const Input: React.FC<InputProps> = ({
         {showForgotPassword && (
           <TouchableOpacity
             style={styles.forgotPasswordButton}
-            onPress={onForgotPasswordPress}
+            // onPress={onForgotPasswordPress}
+            onPress={() => setSecure(!secure)}
             activeOpacity={0.7}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+             <Icon
+              name={secure ? 'eye-off' : 'eye'}
+              size={20}
+              color="#000"
+            />
+            {/* <Text style={styles.forgotPasswordText}>Forgot Password?</Text> */}
           </TouchableOpacity>
         )}
       </View>
