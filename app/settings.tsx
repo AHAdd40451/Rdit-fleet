@@ -43,8 +43,6 @@ export default function SettingsScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
   const [selectedCompanyPhoneCountry, setSelectedCompanyPhoneCountry] = useState<ICountry | undefined>(
     getCountryByCca2('US')
   );
@@ -73,54 +71,6 @@ export default function SettingsScreen() {
       setFirstName(userProfile.first_name || '');
       setLastName(userProfile.last_name || '');
       setEmail(userProfile.email || '');
-      const phone = userProfile.phone_no || '';
-      // Helper function to get country code from phone number
-      const getCountryCodeFromPhone = (phone: string): string => {
-        if (!phone.startsWith('+')) return 'PK';
-        if (phone.startsWith('+971')) return 'AE';
-        if (phone.startsWith('+966')) return 'SA';
-        if (phone.startsWith('+974')) return 'QA';
-        if (phone.startsWith('+965')) return 'KW';
-        if (phone.startsWith('+973')) return 'BH';
-        if (phone.startsWith('+968')) return 'OM';
-        if (phone.startsWith('+961')) return 'LB';
-        if (phone.startsWith('+962')) return 'JO';
-        if (phone.startsWith('+92')) return 'PK';
-        if (phone.startsWith('+91')) return 'IN';
-        if (phone.startsWith('+86')) return 'CN';
-        if (phone.startsWith('+81')) return 'JP';
-        if (phone.startsWith('+49')) return 'DE';
-        if (phone.startsWith('+44')) return 'GB';
-        if (phone.startsWith('+39')) return 'IT';
-        if (phone.startsWith('+34')) return 'ES';
-        if (phone.startsWith('+33')) return 'FR';
-        if (phone.startsWith('+61')) return 'AU';
-        if (phone.startsWith('+55')) return 'BR';
-        if (phone.startsWith('+27')) return 'ZA';
-        if (phone.startsWith('+20')) return 'EG';
-        if (phone.startsWith('+7')) return 'RU';
-        if (phone.startsWith('+1')) return 'US';
-        return 'PK';
-      };
-      // Helper function to extract phone number without country code
-      const extractPhoneNumber = (phone: string): string => {
-        if (!phone.startsWith('+')) return phone;
-        const patterns = [
-          /^\+971/, /^\+966/, /^\+974/, /^\+965/, /^\+973/, /^\+968/, /^\+961/, /^\+962/,
-          /^\+92/, /^\+91/, /^\+86/, /^\+81/, /^\+49/, /^\+44/, /^\+39/, /^\+34/, /^\+33/,
-          /^\+61/, /^\+55/, /^\+27/, /^\+20/, /^\+1/, /^\+7/,
-        ];
-        for (const pattern of patterns) {
-          if (pattern.test(phone)) {
-            return phone.replace(pattern, '').trim();
-          }
-        }
-        const match = phone.match(/^\+\d{1,4}(.*)/);
-        return match ? match[1].trim() : phone;
-      };
-      const countryCode = getCountryCodeFromPhone(phone);
-      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('US'));
-      setPhoneNumber(extractPhoneNumber(phone));
       // Load profile image URL if it exists, otherwise reset to null
       if (userProfile.avatar_url && userProfile.avatar_url.trim() !== '') {
         setProfileImageUri(userProfile.avatar_url);
@@ -176,15 +126,6 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (phoneNumber.trim()) {
-      // Basic phone number validation (should have at least 7 digits)
-      const digitsOnly = phoneNumber.replace(/\D/g, '');
-      if (digitsOnly.length < 7) {
-        showToast('Please enter a valid phone number', 'error');
-        return;
-      }
-    }
-
     if (email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email.trim())) {
@@ -208,55 +149,6 @@ export default function SettingsScreen() {
 
       if (email.trim()) {
         updateData.email = email.trim();
-      }
-
-      if (phoneNumber.trim()) {
-        // Format phone number with country code
-        const digitsOnly = phoneNumber.replace(/\D/g, '');
-        // Access calling code from selectedCountry object
-        let callingCode = '1'; // Default to USA
-        
-        if (selectedCountry) {
-          // Try different possible property names for calling code
-          const possibleProperties = [
-            'callingCode',
-            'calling_code', 
-            'dialCode',
-            'phoneCode',
-            'countryCode',
-            'phone_code'
-          ];
-          
-          for (const prop of possibleProperties) {
-            if ((selectedCountry as any)[prop]) {
-              callingCode = String((selectedCountry as any)[prop]).replace('+', '');
-              break;
-            }
-          }
-          
-          // If still not found, try to get it from the country's cca2 code
-          if (callingCode === '1' && (selectedCountry as any).cca2) {
-            // Expanded lookup table for calling codes by cca2
-            const countryCallingCodes: { [key: string]: string } = {
-              'AE': '971', 'SA': '966', 'QA': '974', 'KW': '965', 'BH': '973',
-              'OM': '968', 'LB': '961', 'JO': '962', 'PK': '92', 'IN': '91',
-              'CN': '86', 'JP': '81', 'DE': '49', 'GB': '44', 'IT': '39',
-              'ES': '34', 'FR': '33', 'AU': '61', 'BR': '55', 'ZA': '27',
-              'EG': '20', 'RU': '7', 'US': '1', 'CA': '1', 'MX': '52',
-              'AR': '54', 'CL': '56', 'CO': '57', 'PE': '51', 'VE': '58',
-              'NZ': '64', 'SG': '65', 'MY': '60', 'TH': '66', 'ID': '62',
-              'PH': '63', 'VN': '84', 'KR': '82', 'TW': '886', 'HK': '852',
-              'TR': '90', 'IL': '972', 'NG': '234', 'KE': '254'
-            };
-            const cca2 = (selectedCountry as any).cca2;
-            if (countryCallingCodes[cca2]) {
-              callingCode = countryCallingCodes[cca2];
-            }
-          }
-        }
-        
-        const formattedValue = `+${callingCode}${digitsOnly}`;
-        updateData.phone_no = formattedValue.trim();
       }
 
       const { error: updateError } = await supabase
@@ -308,52 +200,6 @@ export default function SettingsScreen() {
       setFirstName(userProfile.first_name || '');
       setLastName(userProfile.last_name || '');
       setEmail(userProfile.email || '');
-      const phone = userProfile.phone_no || '';
-      const getCountryCodeFromPhone = (phone: string): string => {
-        if (!phone.startsWith('+')) return 'PK';
-        if (phone.startsWith('+971')) return 'AE';
-        if (phone.startsWith('+966')) return 'SA';
-        if (phone.startsWith('+974')) return 'QA';
-        if (phone.startsWith('+965')) return 'KW';
-        if (phone.startsWith('+973')) return 'BH';
-        if (phone.startsWith('+968')) return 'OM';
-        if (phone.startsWith('+961')) return 'LB';
-        if (phone.startsWith('+962')) return 'JO';
-        if (phone.startsWith('+92')) return 'PK';
-        if (phone.startsWith('+91')) return 'IN';
-        if (phone.startsWith('+86')) return 'CN';
-        if (phone.startsWith('+81')) return 'JP';
-        if (phone.startsWith('+49')) return 'DE';
-        if (phone.startsWith('+44')) return 'GB';
-        if (phone.startsWith('+39')) return 'IT';
-        if (phone.startsWith('+34')) return 'ES';
-        if (phone.startsWith('+33')) return 'FR';
-        if (phone.startsWith('+61')) return 'AU';
-        if (phone.startsWith('+55')) return 'BR';
-        if (phone.startsWith('+27')) return 'ZA';
-        if (phone.startsWith('+20')) return 'EG';
-        if (phone.startsWith('+7')) return 'RU';
-        if (phone.startsWith('+1')) return 'US';
-        return 'PK';
-      };
-      const extractPhoneNumber = (phone: string): string => {
-        if (!phone.startsWith('+')) return phone;
-        const patterns = [
-          /^\+971/, /^\+966/, /^\+974/, /^\+965/, /^\+973/, /^\+968/, /^\+961/, /^\+962/,
-          /^\+92/, /^\+91/, /^\+86/, /^\+81/, /^\+49/, /^\+44/, /^\+39/, /^\+34/, /^\+33/,
-          /^\+61/, /^\+55/, /^\+27/, /^\+20/, /^\+1/, /^\+7/,
-        ];
-        for (const pattern of patterns) {
-          if (pattern.test(phone)) {
-            return phone.replace(pattern, '').trim();
-          }
-        }
-        const match = phone.match(/^\+\d{1,4}(.*)/);
-        return match ? match[1].trim() : phone;
-      };
-      const countryCode = getCountryCodeFromPhone(phone);
-      setSelectedCountry(getCountryByCca2(countryCode) || getCountryByCca2('US'));
-      setPhoneNumber(extractPhoneNumber(phone));
     }
     setIsEditingProfile(false);
   };
@@ -621,7 +467,6 @@ export default function SettingsScreen() {
       {
         id: 'firstName',
         label: 'First Name',
-        type: 'text',
         value: firstName,
         onChangeText: setFirstName,
         placeholder: 'First Name',
@@ -630,7 +475,6 @@ export default function SettingsScreen() {
       {
         id: 'lastName',
         label: 'Last Name',
-        type: 'text',
         value: lastName,
         onChangeText: setLastName,
         placeholder: 'Last Name',
@@ -639,7 +483,6 @@ export default function SettingsScreen() {
       {
         id: 'email',
         label: 'Email',
-        type: 'email',
         value: email,
         onChangeText: setEmail,
         placeholder: 'Email',
@@ -647,69 +490,9 @@ export default function SettingsScreen() {
         keyboardType: 'email-address',
         autoCapitalize: 'none',
       },
-      {
-        id: 'phone',
-        label: 'Phone Number',
-        type: 'phone',
-        value: phoneNumber,
-      },
     ];
 
     const renderFormField = ({ item }: { item: typeof formFields[0] }) => {
-      if (item.type === 'phone') {
-        return (
-          <View style={[styles.formSection, styles.inputContainer]}>
-            <PhoneInput
-              value={phoneNumber}
-              onChangePhoneNumber={setPhoneNumber}
-              selectedCountry={selectedCountry}
-              onChangeSelectedCountry={setSelectedCountry}
-              disabled={!isEditingProfile}
-              phoneInputStyles={{
-                container: {
-                  minHeight: 48,
-                  backgroundColor: '#fff',
-                  borderWidth: 1,
-                  borderColor: '#E0E0E0',
-                  borderRadius: 8,
-                  paddingTop: 14,
-                  paddingRight: 12,
-                  paddingBottom: 14,
-                  paddingLeft: 12,
-                },
-                flagContainer: {
-                  backgroundColor: 'transparent',
-                  paddingRight: 8,
-                },
-                flag: {
-                  fontSize: 20,
-                },
-                caret: {
-                  color: '#000',
-                  fontSize: 16,
-                },
-                divider: {
-                  backgroundColor: '#E0E0E0',
-                  width: 1,
-                  marginHorizontal: 8,
-                },
-                callingCode: {
-                  fontSize: 16,
-                  color: '#000',
-                  fontWeight: '400',
-                },
-                input: {
-                  fontSize: 16,
-                  color: '#000',
-                  flex: 1,
-                },
-              }}
-              placeholder="Phone Number"
-            />
-          </View>
-        );
-      }
-
       return (
         <View style={[styles.formSection, styles.inputContainer]}>
           <Text style={styles.label}>{item.label}</Text>
