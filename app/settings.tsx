@@ -45,6 +45,9 @@ export default function SettingsScreen() {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<ICountry | undefined>(getCountryByCca2('US'));
+  const [selectedCompanyPhoneCountry, setSelectedCompanyPhoneCountry] = useState<ICountry | undefined>(
+    getCountryByCca2('US')
+  );
   const [profileLoading, setProfileLoading] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -910,13 +913,53 @@ export default function SettingsScreen() {
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Phone (Optional)</Text>
-            <Input
-              placeholder="Enter company phone number"
+            <PhoneInput
               value={phone}
-              onChangeText={setPhone}
-              editable={isEditingCompany}
-              keyboardType="phone-pad"
-              style={styles.input}
+              onChangePhoneNumber={setPhone}
+              selectedCountry={selectedCompanyPhoneCountry || getCountryByCca2('US')}
+              onChangeSelectedCountry={setSelectedCompanyPhoneCountry}
+              defaultCountry="US"
+              disabled={!isEditingCompany}
+              phoneInputStyles={{
+                container: {
+                  minHeight: 48,
+                  backgroundColor: '#fff',
+                  borderWidth: 1,
+                  borderColor: '#E0E0E0',
+                  borderRadius: 8,
+                  paddingTop: 14,
+                  paddingRight: 12,
+                  paddingBottom: 14,
+                  paddingLeft: 12,
+                },
+                flagContainer: {
+                  backgroundColor: 'transparent',
+                  paddingRight: 8,
+                },
+                flag: {
+                  fontSize: 20,
+                },
+                caret: {
+                  color: '#000',
+                  fontSize: 16,
+                },
+                divider: {
+                  backgroundColor: '#E0E0E0',
+                  width: 1,
+                  marginHorizontal: 8,
+                },
+                callingCode: {
+                  fontSize: 16,
+                  color: '#000',
+                  fontWeight: '400',
+                },
+                input: {
+                  fontSize: 16,
+                  color: '#000',
+                  flex: 1,
+                },
+              }}
+              placeholder="Phone Number"
             />
           </View>
 

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import PhoneInput, { ICountry, getCountryByCca2 } from 'react-native-international-phone-number';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { LoadingBar } from '../src/components/LoadingBar';
@@ -29,6 +30,9 @@ export default function CompanySetupScreen() {
   const [companyName, setCompanyName] = useState('');
   const [country, setCountry] = useState('United States');
   const [countryCode, setCountryCode] = useState('US');
+  const [selectedPhoneCountry, setSelectedPhoneCountry] = useState<ICountry | undefined>(
+    getCountryByCca2('US')
+  );
   const [state, setState] = useState('');
   const [legalName, setLegalName] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,6 +46,7 @@ export default function CompanySetupScreen() {
   const onSelectCountry = (c) => {
     setCountryCode(c.cca2);
     setCountry(c.name);
+    setSelectedPhoneCountry(getCountryByCca2(c.cca2) || getCountryByCca2('US'));
   };
   useEffect(() => {
     const checkCompanyAndAccess = async () => {
@@ -210,15 +215,55 @@ export default function CompanySetupScreen() {
                 placeholder="Enter legal name"
               />
 
-              <Input
-                variant="text"
-                label="Phone (Optional)"
-                value={phone}
-                onChangeText={setPhone}
-                style={styles.input}
-                keyboardType="phone-pad"
-                placeholder="Enter phone"
-              />
+              <View style={styles.phoneInputContainer}>
+                <PhoneInput
+                  value={phone}
+                  onChangePhoneNumber={setPhone}
+                  selectedCountry={selectedPhoneCountry}
+                  onChangeSelectedCountry={setSelectedPhoneCountry}
+                  defaultCountry="US"
+                  phoneInputStyles={{
+                    container: {
+                      minHeight: 48,
+                      backgroundColor: '#fff',
+                      borderWidth: 1,
+                      borderColor: '#E0E0E0',
+                      borderRadius: 8,
+                      paddingTop: 14,
+                      paddingRight: 12,
+                      paddingBottom: 14,
+                      paddingLeft: 12,
+                    },
+                    flagContainer: {
+                      backgroundColor: 'transparent',
+                      paddingRight: 8,
+                    },
+                    flag: {
+                      fontSize: 20,
+                    },
+                    caret: {
+                      color: '#000',
+                      fontSize: 16,
+                    },
+                    divider: {
+                      backgroundColor: '#E0E0E0',
+                      width: 1,
+                      marginHorizontal: 8,
+                    },
+                    callingCode: {
+                      fontSize: 16,
+                      color: '#000',
+                      fontWeight: '400',
+                    },
+                    input: {
+                      fontSize: 16,
+                      color: '#000',
+                      flex: 1,
+                    },
+                  }}
+                  placeholder="Phone Number"
+                />
+              </View>
 
               <Input
                 variant="text"
@@ -352,6 +397,9 @@ const styles = StyleSheet.create({
   },
 
   input: {
+    marginBottom: 16,
+  },
+  phoneInputContainer: {
     marginBottom: 16,
   },
 
