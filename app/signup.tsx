@@ -25,7 +25,8 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   // Redirect if already logged in
   useEffect(() => {
     const checkAndRedirect = async () => {
@@ -61,7 +62,7 @@ export default function SignupScreen() {
   }, [session, userProfile]);
 
   const handleSignup = async () => {
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       showToast('Please fill in all fields', 'error');
       return;
     }
@@ -79,6 +80,11 @@ export default function SignupScreen() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      showToast('Confirm Password does not match.', 'error');
+      setConfirmPassword('');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -100,7 +106,8 @@ export default function SignupScreen() {
         last_name: lastName.trim(),
         email: email.trim(),
         password: password,
-        role: 'admin', 
+        confirmPassword: password,
+        role: 'admin',
       };
       const { error: dbError } = await supabase
         .from('users')
@@ -125,7 +132,7 @@ export default function SignupScreen() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       showToast('Account created successfully!', 'success', 2000);
-      
+
       setTimeout(async () => {
         // Get the created user profile to check role
         const { data: profileData, error: profileError } = await supabase
@@ -223,8 +230,18 @@ export default function SignupScreen() {
               value={password}
               onChangeText={setPassword}
               style={styles.input}
-              secureTextEntry
+              isPassword={true}
+              showForgotPassword={true}
             />
+            <Input
+  variant="text"
+  label="Confirm Password"
+  value={confirmPassword}
+  onChangeText={setConfirmPassword}
+  style={styles.input}
+  isPassword={true}
+  showForgotPassword={true}
+/>
           </View>
 
           {/* Sign Up Button with Gradient */}
