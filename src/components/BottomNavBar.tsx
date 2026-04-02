@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, usePathname  } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -77,11 +77,24 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
   //   // Check if current segment matches the route name
   //   return currentSegment === routeName || segments.some(seg => seg === routeName);
   // };
+  const pathname = usePathname();
 
+  console.log('pathname =>', pathname);
+  // const isActive = (route: string) => {
+  //   const routeName = route.replace('/', '');
+  //   return pathname === route;
+  const homeRoutes = ['/adminDashboard', '/userDashboard'];
 
   const isActive = (route: string) => {
-    const routeName = route.replace('/', '');
-    return segments.includes(routeName);
+    // Home ke liye special case
+    if (route === '/adminDashboard') {
+      return homeRoutes.includes(pathname);
+    }
+  
+    // Baaki sab ke liye (important fix)
+    return pathname.startsWith(route);
+  
+    // return segments.includes(routeName);
   }; console.log('segments =>', segments);
   // Show bottom nav for all authenticated users
   if (!userProfile) {
@@ -131,14 +144,22 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeRoute }) => {
         </TouchableOpacity>
 
         {/* Central Plus Button */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.plusButton}
           onPress={() => handleNavigation('/add')}
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={28} color="#FFF" />
-        </TouchableOpacity>
-
+        </TouchableOpacity> */}
+{!isAdmin && (
+  <TouchableOpacity
+    style={styles.plusButton}
+    onPress={() => handleNavigation('/add')}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="add" size={28} color="#FFF" />
+  </TouchableOpacity>
+)}
         {/* Notification Icon */}
         <TouchableOpacity
           style={styles.iconButton}

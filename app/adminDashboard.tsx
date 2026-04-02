@@ -35,7 +35,7 @@ export default function AdminDashboardScreen() {
   const router = useRouter();
   const { userProfile, user, session } = useAuth();
   const { showToast } = useToast();
-  
+
   // Modal and user management state
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -43,7 +43,7 @@ export default function AdminDashboardScreen() {
   const [checkingCompany, setCheckingCompany] = useState(true);
   const [refreshUsersTable, setRefreshUsersTable] = useState(0);
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  
+
   // Dashboard stats state
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalAssets, setTotalAssets] = useState(0);
@@ -91,13 +91,13 @@ export default function AdminDashboardScreen() {
 
       // Determine the filter user ID (same logic as handleSaveUser)
       let filterUserId = session?.user?.id;
-      
+
       // If session is not available, try to get it directly from Supabase
       if (!filterUserId) {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         filterUserId = currentSession?.user?.id;
       }
-      
+
       // Fallback: generate UUID from phone or user ID (for phone-based admins)
       if (!filterUserId && userProfile) {
         const identifier = userProfile.phone_no || `user_${userProfile.id}`;
@@ -120,7 +120,7 @@ export default function AdminDashboardScreen() {
         .from('users')
         .select('*', { count: 'exact', head: true })
         .eq('userId', filterUserId);
-      
+
       // If no results and we have userProfile.id, also try with numeric ID (fallback)
       if ((usersError || usersCount === 0) && userProfile?.id) {
         const numericIdString = userProfile.id.toString();
@@ -129,13 +129,13 @@ export default function AdminDashboardScreen() {
           .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('userId', numericIdString);
-        
+
         if (!fallbackError && fallbackCount !== null) {
           usersCount = fallbackCount;
           usersError = null;
         }
       }
-      
+
       if (usersError) {
         console.error('Error fetching users count:', usersError);
       } else {
@@ -149,7 +149,7 @@ export default function AdminDashboardScreen() {
         .from('assets')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', filterUserId);
-      
+
       // If no results and we have userProfile.id, also try with numeric ID (fallback)
       if ((assetsError || assetsCount === 0) && userProfile?.id) {
         const numericIdString = userProfile.id.toString();
@@ -158,13 +158,13 @@ export default function AdminDashboardScreen() {
           .from('assets')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', numericIdString);
-        
+
         if (!fallbackError && fallbackCount !== null) {
           assetsCount = fallbackCount;
           assetsError = null;
         }
       }
-      
+
       if (assetsError) {
         console.error('Error fetching assets count:', assetsError);
       } else {
@@ -202,20 +202,20 @@ export default function AdminDashboardScreen() {
         // Create new user
         // Get current admin user ID
         let currentUserId = session?.user?.id;
-        
+
         // If session is not available, try to get it directly from Supabase
         // This handles cases where the session might not be loaded in context yet
         if (!currentUserId) {
           const { data: { session: currentSession } } = await supabase.auth.getSession();
           currentUserId = currentSession?.user?.id;
         }
-        
+
         // Fallback to userProfile.id if still not available (for phone-based users)
         // Note: userProfile.id is numeric, but userId field may accept it
         if (!currentUserId) {
           currentUserId = userProfile?.id?.toString();
         }
-        
+
         if (!currentUserId) {
           throw new Error('Unable to identify current user. Please log in again.');
         }
@@ -407,10 +407,18 @@ export default function AdminDashboardScreen() {
                 />
               </View>
             </View>
-            <UsersTable
+            {/* <UsersTable
               key={refreshUsersTable}
               onEditUser={handleEditUser}
-            />
+              currentUserId={session?.user?.id}
+            /> */}
+            {userProfile?.role === 'admin' && (
+              <UsersTable
+                key={refreshUsersTable}
+                onEditUser={handleEditUser}
+                currentUserId={session?.user?.id}
+              />
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
