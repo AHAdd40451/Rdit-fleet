@@ -141,7 +141,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
     mileage?: string;
     odometer?: string;
   }>({});
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const states = ['FL', 'TX', 'CA', 'NY', 'GA'];
 
   useEffect(() => {
@@ -743,30 +743,59 @@ export const AssetModal: React.FC<AssetModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // const handleSave = async () => {
+  //   if (!assetName || !vin) {
+  //     return;
+  //   }
+
+  //   if (!validateForm()) {
+  //     return;
+  //   }
+
+  //   const assetData: Omit<Asset, 'id' | 'user_id' | 'photo'> = {
+  //     asset_name: assetName.trim(),
+  //     color: color.trim() || '',
+  //     vin: vin.trim(),
+  //     make: make.trim() || '',
+  //     model: model.trim() || '',
+  //     year: year ? parseInt(year, 10) : null,
+  //     odometer: odometer ? parseInt(odometer, 10) : null,
+  //     mileage: mileage ? parseInt(mileage, 10) : null,
+  //     state: state || null,
+  //   };
+
+  //   await onSave(assetData);
+  // };
   const handleSave = async () => {
-    if (!assetName || !vin) {
-      return;
+    // 🚫 Prevent multiple clicks
+    if (isSubmitting || loading) return;
+  
+    if (!assetName || !vin) return;
+  
+    if (!validateForm()) return;
+  
+    try {
+      setIsSubmitting(true);
+  
+      const assetData: Omit<Asset, 'id' | 'user_id' | 'photo'> = {
+        asset_name: assetName.trim(),
+        color: color.trim() || '',
+        vin: vin.trim(),
+        make: make.trim() || '',
+        model: model.trim() || '',
+        year: year ? parseInt(year, 10) : null,
+        odometer: odometer ? parseInt(odometer, 10) : null,
+        mileage: mileage ? parseInt(mileage, 10) : null,
+        state: state || null,
+      };
+  
+      await onSave(assetData);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (!validateForm()) {
-      return;
-    }
-
-    const assetData: Omit<Asset, 'id' | 'user_id' | 'photo'> = {
-      asset_name: assetName.trim(),
-      color: color.trim() || '',
-      vin: vin.trim(),
-      make: make.trim() || '',
-      model: model.trim() || '',
-      year: year ? parseInt(year, 10) : null,
-      odometer: odometer ? parseInt(odometer, 10) : null,
-      mileage: mileage ? parseInt(mileage, 10) : null,
-      state: state || null,
-    };
-
-    await onSave(assetData);
   };
-
   const handleClose = () => {
     if (!loading) {
       onClose();
@@ -1051,7 +1080,7 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                     </View>
 
                     <View style={styles.buttonContainer}>
-                      <Button
+                      {/* <Button
                         variant="gradient"
                         title={
                           loading
@@ -1065,7 +1094,22 @@ export const AssetModal: React.FC<AssetModalProps> = ({
                         onPress={handleSave}
                         disabled={loading || !isFormValid}
                         style={styles.saveButton}
-                      />
+                      /> */}
+                      <Button
+  variant="gradient"
+  title={
+    isSubmitting || loading
+      ? editingAsset
+        ? 'Updating...'
+        : 'Creating...'
+      : editingAsset
+      ? 'Update Asset'
+      : 'Create Asset'
+  }
+  onPress={handleSave}
+  disabled={isSubmitting || loading || !isFormValid}
+  style={styles.saveButton}
+/>
                       {loading && (
                         <View style={styles.loadingContainer}>
                           <LoadingBar variant="bar" />
