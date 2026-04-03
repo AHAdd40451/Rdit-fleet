@@ -398,14 +398,14 @@ export default function AdminDashboardScreen() {
                   View and manage all users in your system.
                 </Text>
               </View>
-              <View style={styles.addUserButtonContainer}>
+              {/* <View style={styles.addUserButtonContainer}>
                 <Button
                   variant="gradient"
                   title="Add User"
                   onPress={handleAddUser}
                   style={styles.addUserButton}
                 />
-              </View>
+              </View> */}
             </View>
             <UsersTable
               key={refreshUsersTable}
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
-    marginBottom: 16,
+    // marginBottom: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
