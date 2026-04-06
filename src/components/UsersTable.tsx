@@ -22,10 +22,13 @@ interface User {
 
 interface UsersTableProps {
   onEditUser?: (user: User) => void;
+  currentUserId: string; // 👈 add
+
 }
 
 export const UsersTable: React.FC<UsersTableProps> = ({
   onEditUser,
+  currentUserId
 }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +44,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
       const { data, error: fetchError } = await supabase
         .from('users')
         .select('id, first_name, last_name, phone_no, email, role')
+        .eq('userId', currentUserId)
         .order('created_at', { ascending: false });
 
       if (fetchError) {

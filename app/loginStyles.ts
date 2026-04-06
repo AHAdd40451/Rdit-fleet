@@ -151,6 +151,8 @@ export const loginStyles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 12,
     color: '#666',
+    textAlign: 'right',
+
   },
   buttonContainer: {
     width: '100%',

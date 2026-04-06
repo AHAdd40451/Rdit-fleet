@@ -397,7 +397,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#000', 
+    paddingBottom: 15,
+    paddingLeft: 5,
   },
   seeAllText: {
     fontSize: 14,
