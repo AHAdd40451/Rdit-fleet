@@ -27,6 +27,7 @@ Then deploy the function (if you haven’t already):
 
 ```bash
 supabase functions deploy create-payment-intent
+supabase functions deploy payment-analytics
 ```
 
 ## 2. (Optional) Use `.env` for the publishable key

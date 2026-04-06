@@ -55,7 +55,15 @@ export default function PaymentScreen() {
     setSelectedPlanId(planId);
     setLoading(true);
     try {
-      const result = await createPaymentIntent({ amount: cents, currency: 'usd' });
+      const result = await createPaymentIntent({
+        amount: cents,
+        currency: 'usd',
+        metadata: {
+          planId: selectedPlan.id,
+          planName: selectedPlan.name,
+          source: 'mobile-app',
+        },
+      });
       if (result.error) {
         showToast(result.error, 'error');
         setLoading(false);

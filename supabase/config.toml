@@ -4,3 +4,6 @@ verify_jwt = false
 
 [functions.create-payment-intent]
 verify_jwt = false
+
+[functions.payment-analytics]
+verify_jwt = false

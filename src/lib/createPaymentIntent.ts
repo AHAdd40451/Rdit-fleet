@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 export type CreatePaymentIntentParams = {
   amount: number; // in cents
   currency?: string;
+  metadata?: Record<string, string>;
 };
 
 export type CreatePaymentIntentResult =
@@ -20,6 +21,7 @@ export async function createPaymentIntent(
     body: {
       amount: params.amount,
       currency: params.currency || 'usd',
+      metadata: params.metadata ?? {},
     },
   });
 

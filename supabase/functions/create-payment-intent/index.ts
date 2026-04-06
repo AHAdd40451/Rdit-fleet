@@ -13,7 +13,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -51,6 +51,14 @@ serve(async (req) => {
     const currency = (typeof body.currency === 'string' && body.currency.length === 3)
       ? body.currency.toLowerCase()
       : 'usd';
+    const metadata =
+      body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+        ? Object.fromEntries(
+            Object.entries(body.metadata)
+              .filter(([key, value]) => typeof key === 'string' && typeof value === 'string')
+              .map(([key, value]) => [key, value])
+          )
+        : {};
 
     if (amount < 50) {
       return new Response(
@@ -62,6 +70,7 @@ serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
+      metadata,
       automatic_payment_methods: { enabled: true },
     });
 
