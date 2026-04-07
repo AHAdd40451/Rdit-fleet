@@ -106,7 +106,6 @@ export default function SignupScreen() {
         last_name: lastName.trim(),
         email: email.trim(),
         password: password,
-        confirmPassword: password,
         role: 'admin',
       };
       const { error: dbError } = await supabase
